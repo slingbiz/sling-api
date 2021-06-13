@@ -15,7 +15,13 @@ const initConfig = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ initConfigData, layoutConfig });
 });
 
+const setConfig = catchAsync(async (req, res) => {
+  const setRes = await clientService.setInitConfig(req.body);
+  res.status(httpStatus.OK).send(setRes);
+});
+
 module.exports = {
   ping,
   initConfig,
+  setConfig,
 };

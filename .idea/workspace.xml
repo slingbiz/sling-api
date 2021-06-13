@@ -23,12 +23,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8ddd9614-392c-46ea-92bf-177189971331" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/controllers/invite.controller.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/routes/v1/invite.route.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/services/invite.service.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/controllers/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/controllers/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/routes/v1/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/routes/v1/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/services/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/services/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.eslintrc.json" beforeDir="false" afterPath="$PROJECT_DIR$/.eslintrc.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/controllers/dashboard.controller.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/controllers/dashboard.controller.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/routes/v1/dashboard.route.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/routes/v1/dashboard.route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/services/client.service.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/services/client.service.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -75,7 +74,15 @@
       <workItem from="1620149280505" duration="398000" />
       <workItem from="1620471428228" duration="6811000" />
       <workItem from="1621191935843" duration="3865000" />
-      <workItem from="1621684068706" duration="2792000" />
+      <workItem from="1621684068706" duration="3564000" />
+      <workItem from="1621911237146" duration="3292000" />
+      <workItem from="1622574006175" duration="1009000" />
+      <workItem from="1622903081147" duration="2020000" />
+      <workItem from="1623008974263" duration="303000" />
+      <workItem from="1623013076887" duration="286000" />
+      <workItem from="1623017108479" duration="609000" />
+      <workItem from="1623177618027" duration="1722000" />
+      <workItem from="1623448917289" duration="8767000" />
     </task>
     <servers />
   </component>
@@ -103,13 +110,13 @@
       <screen x="0" y="0" width="1440" height="900" />
     </state>
     <state x="221" y="89" key="SettingsEditor/0.0.1440.900@0.0.1440.900" timestamp="1618259679227" />
-    <state x="421" y="205" width="598" height="554" key="find.popup" timestamp="1621697578784">
+    <state x="421" y="205" width="598" height="554" key="find.popup" timestamp="1623527784542">
       <screen x="0" y="0" width="1440" height="900" />
     </state>
-    <state x="421" y="205" width="598" height="554" key="find.popup/0.0.1440.900@0.0.1440.900" timestamp="1621697578784" />
-    <state x="385" y="196" width="670" height="676" key="search.everywhere.popup" timestamp="1621703802667">
+    <state x="421" y="205" width="598" height="554" key="find.popup/0.0.1440.900@0.0.1440.900" timestamp="1623527784542" />
+    <state x="385" y="196" width="670" height="676" key="search.everywhere.popup" timestamp="1623528156866">
       <screen x="0" y="0" width="1440" height="900" />
     </state>
-    <state x="385" y="196" width="670" height="676" key="search.everywhere.popup/0.0.1440.900@0.0.1440.900" timestamp="1621703802667" />
+    <state x="385" y="196" width="670" height="676" key="search.everywhere.popup/0.0.1440.900@0.0.1440.900" timestamp="1623528156866" />
   </component>
 </project>
