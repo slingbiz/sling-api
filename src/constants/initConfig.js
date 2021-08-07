@@ -21,7 +21,10 @@ const defaultConfig = {
         default: '#F4F7FE',
       },
       primary: {
+        // main: '#ffb400',
+        // main: '#f1c936',
         main: '#0A8FDC',
+        // main: '#f14836',
         contrastText: '#fff',
       },
       secondary: {
@@ -60,7 +63,7 @@ const defaultConfig = {
     },
     divider: 'rgba(0, 0, 0, 0.12)',
     typography: {
-      fontFamily: ['Poppins', 'sans-serif'].join(','),
+      fontFamily: ['Open Sans', 'sans-serif'].join(','),
     },
     overrides: {
       MuiTypography: {
@@ -128,7 +131,7 @@ const defaultConfig = {
   },
   themeStyle: ThemeStyle.STANDARD,
   themeMode: ThemeMode.SEMI_DARK,
-  navStyle: NavStyle.HOR_LIGHT_NAV,
+  navStyle: NavStyle.DRAWER, // Note: Variable and place to change layout of the client app.
   layoutType: LayoutType.FULL_WIDTH,
   footerType: FooterType.FLUID,
   headerType: HeaderType.DARK,
