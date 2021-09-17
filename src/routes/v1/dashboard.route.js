@@ -6,6 +6,8 @@ const router = express.Router();
 router.route('/').post(dashboardController.ping).get(dashboardController.ping);
 router.route('/ping').post(dashboardController.ping).get(dashboardController.ping);
 router.route('/initConfig').post(dashboardController.initConfig).get(dashboardController.initConfig);
+
+// TODO: Add middleware to authenticate client secret key
 router.route('/setConfig').post(dashboardController.setConfig).get(dashboardController.setConfig);
 
 module.exports = router;

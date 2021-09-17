@@ -3,6 +3,7 @@ const authRoute = require('./auth.route');
 const userRoute = require('./user.route');
 const dummyRoute = require('./dummy.route');
 const dashboardRoute = require('./dashboard.route');
+const frontendRoute = require('./frontend.route');
 const docsRoute = require('./docs.route');
 const inviteRoute = require('./invite.route');
 const config = require('../../config/config');
@@ -29,6 +30,10 @@ const defaultRoutes = [
   {
     path: '/dashboard',
     route: dashboardRoute,
+  },
+  {
+    path: '/frontend',
+    route: frontendRoute,
   },
 ];
 
