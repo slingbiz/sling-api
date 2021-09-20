@@ -1,7 +1,7 @@
 .idea
 .idea/
 .idea*
-
+/.idea
 # Dependencies
 node_modules
 

@@ -11,7 +11,8 @@ const ping = catchAsync(async (req, res) => {
 });
 
 const initConfig = catchAsync(async (req, res) => {
-  const layoutConfig = await clientService.getInitConfig();
+  const { clientId } = req;
+  const layoutConfig = await clientService.getInitConfig({ clientId });
   res.status(httpStatus.OK).send({ initConfigData, layoutConfig });
 });
 

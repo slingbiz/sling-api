@@ -2,7 +2,12 @@ const { ObjectID } = require('mongodb');
 
 const { getDb } = require('../utils/mongoInit');
 
+const sleep = (milliseconds) => {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+};
+
 const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
+  // await sleep(5000);
   const db = getDb();
   const skip = page * size;
   const andArray = [];

@@ -9,12 +9,13 @@ const { getDb } = require('../utils/mongoInit');
  * @param userId
  * @returns {Promise<*|number>}
  */
-const getInitConfig = async ({ asPath, query, userId = 'demo' }) => {
+const getInitConfig = async ({ asPath, query, clientId = 'demo-id' } = {}) => {
   // Get Db
   const db = getDb();
   let layoutConfig = {};
   try {
-    layoutConfig = await db.collection('layout_config').find({ user_id: userId }).toArray();
+    layoutConfig = await db.collection('layout_config').find({ client_id: clientId }).toArray();
+    console.log(clientId, 'clientIdclientId@client.service.js', layoutConfig);
   } catch (e) {
     console.log(e.message, '[getInitConfig] Service');
     throw new ApiError(httpStatus['500'], 'Something bad happened while fetching the config');
