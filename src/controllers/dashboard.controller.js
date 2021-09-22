@@ -42,7 +42,8 @@ const getInitProps = catchAsync(async (req, res) => {
 });
 
 const setConfig = catchAsync(async (req, res) => {
-  const setRes = await clientService.setInitConfig(req.body);
+  const { clientId } = req;
+  const setRes = await clientService.setInitConfig(req.body, clientId);
   res.status(httpStatus.OK).send(setRes);
 });
 

@@ -23,7 +23,8 @@ const getInitConfig = async ({ asPath, query, clientId = 'demo-id' } = {}) => {
   return layoutConfig?.[0]?.config || 0;
 };
 
-const setInitConfig = async (reqBody) => {
+// TODO make it configurable after login in the sling dashboard.
+const setInitConfig = async (reqBody, clientId = 'demo-id') => {
   console.log(reqBody, '@setInitConfig reqBody');
   const { pageKey, root } = reqBody;
   const db = getDb();
@@ -31,7 +32,7 @@ const setInitConfig = async (reqBody) => {
   try {
     // TODO: Fetch user info from auth middleware after checking roles and permissions.
     // TODO: Pass user info in request body.
-    await db.collection('layout_config').updateOne({ user_id: 'demo' }, { $set: { [`config.${pageKey}`]: { root } } });
+    await db.collection('layout_config').updateOne({ client_id: clientId }, { $set: { [`config.${pageKey}`]: { root } } });
     saveRes = { status: true, msg: 'Layout updated successfully' };
   } catch (e) {
     console.log(e.message, '[setInitConfig] Service');
