@@ -14,7 +14,7 @@ const setClient = (req, res, next) => {
   //   // call next middleware in the stack
   //   next();
   // });
-  req.clientId = clientId;
+  req.clientId = clientId || 'demo-id';
 
   // call next middleware in the stack
   next();

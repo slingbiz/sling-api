@@ -2,10 +2,6 @@ const { ObjectID } = require('mongodb');
 
 const { getDb } = require('../utils/mongoInit');
 
-const sleep = (milliseconds) => {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-};
-
 const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
   // await sleep(5000);
   const db = getDb();
@@ -54,6 +50,7 @@ const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
   andArray.push({ $or: orArray });
 
   // TODO: Cache this response.
+  console.log(JSON.stringify(andArray), 'andArrayandArray')
   // Get widgets and total count
   const widgetsRes = await db.collection('widgets').find({ $and: andArray }).skip(skip).limit(size).toArray();
   const totalRes = await db.collection('widgets').count({ $and: andArray });
