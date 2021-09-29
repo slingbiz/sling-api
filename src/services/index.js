@@ -6,3 +6,4 @@ module.exports.clientService = require('./client.service');
 module.exports.inviteService = require('./invite.service');
 module.exports.mediaService = require('./media.service');
 module.exports.widgetsService = require('./widgets.service');
+module.exports.pageRoutesService = require('./pageRoutes.service');

@@ -5,6 +5,7 @@ const dummyRoute = require('./dummy.route');
 const dashboardRoute = require('./dashboard.route');
 const widgetsRoute = require('./widgets.route');
 const mediaRoute = require('./media.route');
+const pageRoutes = require('./pageRoutes.route');
 const frontendRoute = require('./frontend.route');
 const docsRoute = require('./docs.route');
 const inviteRoute = require('./invite.route');
@@ -44,6 +45,10 @@ const defaultRoutes = [
   {
     path: '/media',
     route: mediaRoute,
+  },
+  {
+    path: '/pageRoutes',
+    route: pageRoutes,
   },
 ];
 
