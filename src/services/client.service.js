@@ -1,85 +1,21 @@
 const httpStatus = require('http-status');
+const axios = require('axios');
 const ApiError = require('../utils/ApiError');
+const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
 
-// Default Config
-// TODO: To be removed.
-const layoutConfigDefault = {
-  listing: {
-    root: {
-      header: {
-        rows: [{}, {}],
-      },
-      body: {
-        rows: [
-          {
-            cells: [{ key: 'FilterToggle', payload: {} }],
-            config: {
-              wrapper: 'DefaultContent',
-            },
-          },
-          {
-            cells: [
-              {
-                key: 'ProductFilters',
-                payload: { style: { width: '35%' } },
-              },
-              {
-                key: 'ProductMain',
-                rows: [
-                  {
-                    cells: [
-                      {
-                        key: 'ListingSummary',
-                        payload: {},
-                      },
-                      {
-                        key: 'ListingSearchBar',
-                        payload: {},
-                      },
-                    ],
-                    config: {
-                      wrapper: 'AppsHeader',
-                    },
-                  },
-                  {
-                    cells: [
-                      {
-                        key: 'ProductList',
-                        payload: {},
-                      },
-                    ],
-                    config: {
-                      wrapper: 'DefaultContent',
-                    },
-                  },
-                ],
-                payload: { style: { width: '75%' } },
-              },
-            ],
-            config: {
-              wrapper: 'DefaultContent',
-            },
-          },
-        ],
-      },
-      footer: {},
-    },
-  },
-};
 /**
- * Send an email
- * @param {string} to
- * @param {string} subject
- * @param {string} text
- * @returns {Promise}
+ * Returns initial config to create the page layout.
+ * @param userId
+ * @returns {Promise<*|number>}
  */
-const getInitConfig = async (userId = 'demo') => {
+const getInitConfig = async ({ asPath, query, clientId = 'demo-id' } = {}) => {
   // Get Db
   const db = getDb();
   let layoutConfig = {};
   try {
-    layoutConfig = await db.collection('layout_config').find({ user_id: userId }).toArray();
+    layoutConfig = await db.collection('layout_config').find({ client_id: clientId }).toArray();
+    console.log(clientId, 'clientIdclientId@client.service.js', layoutConfig);
   } catch (e) {
     console.log(e.message, '[getInitConfig] Service');
     throw new ApiError(httpStatus['500'], 'Something bad happened while fetching the config');
@@ -87,7 +23,8 @@ const getInitConfig = async (userId = 'demo') => {
   return layoutConfig?.[0]?.config || 0;
 };
 
-const setInitConfig = async (reqBody) => {
+// TODO make it configurable after login in the sling dashboard.
+const setInitConfig = async (reqBody, clientId = 'demo-id') => {
   console.log(reqBody, '@setInitConfig reqBody');
   const { pageKey, root } = reqBody;
   const db = getDb();
@@ -95,7 +32,7 @@ const setInitConfig = async (reqBody) => {
   try {
     // TODO: Fetch user info from auth middleware after checking roles and permissions.
     // TODO: Pass user info in request body.
-    await db.collection('layout_config').updateOne({ user_id: 'demo' }, { $set: { [`config.${pageKey}`]: { root } } });
+    await db.collection('layout_config').updateOne({ client_id: clientId }, { $set: { [`config.${pageKey}`]: { root } } });
     saveRes = { status: true, msg: 'Layout updated successfully' };
   } catch (e) {
     console.log(e.message, '[setInitConfig] Service');
@@ -104,7 +41,40 @@ const setInitConfig = async (reqBody) => {
   return saveRes;
 };
 
+const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
+  if (pathname !== GLOBAL_SLING_HANDLER) {
+    return {};
+  }
+  const db = getDb();
+
+  // Find api list based on route page template
+  const ssrApis = await db.collection('api_meta').find({ client_id: clientId, ssr: true }).toArray();
+  // console.log(ssrApis, '@ssrapis');
+
+  const axiosPromiseArr = [];
+  const apiRetResponse = {};
+  const responseKeyMapper = {};
+
+  // Todo: Pass headers, and request body from params;
+  ssrApis.forEach((v, k) => {
+    const { url, type, headers, params, unique_id_fe: uniqueIdFe } = v;
+    responseKeyMapper[k] = uniqueIdFe;
+    axiosPromiseArr.push(axios.get(url));
+  });
+
+  const axiosRes = await Promise.all(axiosPromiseArr);
+
+  axiosRes.forEach((apiResponse, k) => {
+    apiRetResponse[responseKeyMapper[k]] = apiResponse.data;
+  });
+  return apiRetResponse;
+};
+
+const getRouteConstants = () => {};
+
 module.exports = {
   getInitConfig,
   setInitConfig,
+  getSSRApiRes,
+  getRouteConstants,
 };
