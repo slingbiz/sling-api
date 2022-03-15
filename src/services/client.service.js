@@ -9,7 +9,7 @@ const { getDb } = require('../utils/mongoInit');
  * @param userId
  * @returns {Promise<*|number>}
  */
-const getInitConfig = async ({ asPath, query, clientId = 'demo-id' } = {}) => {
+const getInitConfig = async ({ clientId = 'demo-id' } = {}) => {
   // Get Db
   const db = getDb();
   let layoutConfig = {};
@@ -45,7 +45,7 @@ const setInitConfig = async (reqBody, clientId = 'demo-id') => {
         .toArray();
 
       if (templateExist?.length) {
-        return { status: true, msg: `Layout (${pageKey}) already exists` };
+        return { status: false, msg: `Page Layout (${pageKey}) already exists` };
       }
     }
     await db
