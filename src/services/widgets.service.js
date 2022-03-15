@@ -4,6 +4,7 @@ const { getDb } = require('../utils/mongoInit');
 
 const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
   // await sleep(5000);
+  console.log(page, size, query, clientId, type, 'page = 0, size = 10, query, clientId, type')
   const db = getDb();
   const skip = page * size;
   const andArray = [];

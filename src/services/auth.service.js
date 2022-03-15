@@ -90,6 +90,7 @@ const verifyEmail = async (verifyEmailToken) => {
   }
 };
 
+
 module.exports = {
   loginUserWithEmailAndPassword,
   logout,

@@ -24,13 +24,11 @@ const getInitProps = catchAsync(async (req, res) => {
   const { pathname, query, asPath } = req.body;
   const { clientId } = req;
 
-  console.log(req.body, 'req@getInitProps', clientId);
-
   // Todo call all async using Promise.All
 
   // Get Page Template Type & Constants from route
 
-  const layoutConfig = await clientService.getInitConfig({ asPath, query });
+  const layoutConfig = await clientService.getInitConfig({ asPath, query, clientId });
 
   // Get initial api requests set in the dashboard.
   // Fetch response, set in a custom object.
