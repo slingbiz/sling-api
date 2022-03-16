@@ -8,7 +8,7 @@ let server;
 mongoUtil.connectToServer(function (err, client) {
   app.db = client;
   server = app.listen(config.port, () => {
-    logger.info(`Listening to port ${config.port}`);
+    logger.info(`Listening to port ${config.port} & ${client}`);
   });
 });
 
