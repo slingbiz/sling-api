@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const { toJSON } = require('./plugins');
-const { pkgTypes } = require('../config/pkgType');
+const { pkgTypes } = require('../constants/pkgType');
 
 const acountSchema = mongoose.Schema(
   {
@@ -99,6 +99,6 @@ acountSchema.statics.isEmailTaken = async function (email, excludeUserId) {
 /**
  * @typedef Account
  */
-const Account = mongoose.model('client_meta', acountSchema);
+const Account = mongoose.model('client_meta', acountSchema, 'client_meta');
 
 module.exports = Account;

@@ -30,7 +30,7 @@ const getInitProps = catchAsync(async (req, res) => {
 
   // Get Page Template Type & Constants from route
 
-  const layoutConfig = await clientService.getInitConfig({ asPath, query });
+  const layoutConfig = await clientService.getInitConfig({ asPath, query, clientId });
 
   // Get initial api requests set in the dashboard.
   // Fetch response, set in a custom object.

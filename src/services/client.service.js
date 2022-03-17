@@ -9,10 +9,12 @@ const { getDb } = require('../utils/mongoInit');
  * @param userId
  * @returns {Promise<*|number>}
  */
-const getInitConfig = async ({ asPath, query, clientId = 'demo-id' } = {}) => {
+const getInitConfig = async ({ clientId = 'demo-id' } = {}) => {
   // Get Db
   const db = getDb();
   let layoutConfig = {};
+
+  console.log(clientId, '[clientId]');
   try {
     layoutConfig = await db.collection('layout_config').find({ client_id: clientId }).toArray();
     console.log(clientId, 'clientIdclientId@client.service.js', layoutConfig);
@@ -25,14 +27,30 @@ const getInitConfig = async ({ asPath, query, clientId = 'demo-id' } = {}) => {
 
 // TODO make it configurable after login in the sling dashboard.
 const setInitConfig = async (reqBody, clientId = 'demo-id') => {
-  console.log(reqBody, '@setInitConfig reqBody');
-  const { pageKey, root } = reqBody;
+  console.log(reqBody, '@setInitConfig reqBody', clientId);
+  const { pageKey, root, meta, isNewRecord } = reqBody;
   const db = getDb();
   let saveRes = {};
   try {
     // TODO: Fetch user info from auth middleware after checking roles and permissions.
     // TODO: Pass user info in request body.
-    await db.collection('layout_config').updateOne({ client_id: clientId }, { $set: { [`config.${pageKey}`]: { root } } });
+
+    if (isNewRecord) {
+      const templateExist = await db
+        .collection('layout_config')
+        .find({
+          client_id: clientId,
+          [`config.${pageKey}`]: { $exists: true },
+        })
+        .toArray();
+
+      if (templateExist?.length) {
+        return { status: false, msg: `Page Layout (${pageKey}) already exists` };
+      }
+    }
+    await db
+      .collection('layout_config')
+      .updateOne({ client_id: clientId }, { $set: { [`config.${pageKey}`]: { root, meta } } }, { upsert: true });
     saveRes = { status: true, msg: 'Layout updated successfully' };
   } catch (e) {
     console.log(e.message, '[setInitConfig] Service');
