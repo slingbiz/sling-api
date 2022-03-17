@@ -106,8 +106,16 @@ const generateResetPasswordToken = async (email) => {
  * @returns {Promise<string>}
  */
 const generateVerifyEmailToken = async (user) => {
+  console.log(user, user.id, '[user .uid]');
   const expires = moment().add(config.jwt.verifyEmailExpirationMinutes, 'minutes');
   const verifyEmailToken = generateToken(user.id, expires, tokenTypes.VERIFY_EMAIL);
+  console.log(
+    verifyEmailToken,
+    user.id,
+    expires,
+    tokenTypes.VERIFY_EMAIL,
+    'verifyEmailToken, user.id, expires, tokenTypes.VERIFY_EMAIL'
+  );
   await saveToken(verifyEmailToken, user.id, expires, tokenTypes.VERIFY_EMAIL);
   return verifyEmailToken;
 };

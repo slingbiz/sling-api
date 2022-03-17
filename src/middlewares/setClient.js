@@ -15,6 +15,7 @@ const setClient = async (req, res, next) => {
     // Validate token
     const user = await admin.auth().verifyIdToken(token);
     req.user = user;
+    req.token = token;
 
     // Verify client
     const clientId = req.header('client');
@@ -26,6 +27,7 @@ const setClient = async (req, res, next) => {
     // call next middleware in the stack
     next();
   } catch (error) {
+    console.log(error.message, 'errorerror');
     return res.status(500).json({
       error,
     });
