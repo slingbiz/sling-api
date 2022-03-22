@@ -7,11 +7,13 @@ const CompanyRegistrationForm = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send({ form1 });
 });
 const CompanyMembershipForm = catchAsync(async (req, res) => {
-  const form2 = await CompanyMembership(req.body.id, req.body.packageType);
+  const email = req.user?.email;
+  const form2 = await CompanyMembership(email, req.body.packageType);
   res.status(httpStatus.CREATED).send({ form2 });
 });
 const CompanyKeyCodeSetupForm = catchAsync(async (req, res) => {
-  const form3 = await CompanyKeyCodeSetup(req.body.id, req.body.data);
+  const email = req.user?.email;
+  const form3 = await CompanyKeyCodeSetup(email, req.body.data);
   res.status(httpStatus.CREATED).send({ form3 });
 });
 

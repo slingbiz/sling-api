@@ -27,6 +27,10 @@ const acountSchema = mongoose.Schema(
         }
       },
     },
+    verificationStep: {
+      type: String,
+      trim: true,
+    },
     companyName: {
       type: String,
       required: true,
@@ -34,7 +38,7 @@ const acountSchema = mongoose.Schema(
     },
     phoneNumber: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     address1: {
@@ -53,7 +57,7 @@ const acountSchema = mongoose.Schema(
     },
     zipCode: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     country: {
