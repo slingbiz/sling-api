@@ -6,6 +6,12 @@ const { roles } = require('../config/roles');
 
 const userSchema = mongoose.Schema(
   {
+    _id: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true,
+    },
     name: {
       type: String,
       required: true,
@@ -48,6 +54,7 @@ const userSchema = mongoose.Schema(
   },
   {
     timestamps: true,
+    _id: false,
   }
 );
 

@@ -8,15 +8,28 @@ const ping = catchAsync(async (req, res) => {
 });
 
 const getWidgets = catchAsync(async (req, res) => {
-  const { query, page, size } = req.body;
+  console.log(req.query);
+  const { query, page, size, widgetType } = req.query;
   const { clientId } = req;
-  console.log('clientIDclientIDclientIDclientID', clientId);
 
-  const widgets = await widgetsService.getWidgets({ page, size, query, clientId });
+  const widgets = await widgetsService.getWidgets(widgetType);
   res.status(httpStatus.OK).send({ widgets });
+});
+
+const createWidget = catchAsync(async (req, res) => {
+  const widget = await widgetsService.createWidget(req.body);
+  res.status(httpStatus.CREATED).send({ widget });
+});
+
+const updateWidget = catchAsync(async (req, res) => {
+  console.log(req.body);
+  const widgets = await widgetsService.updateWidget(req.body.id, req.body.widget);
+  res.status(httpStatus.CREATED).send(widgets);
 });
 
 module.exports = {
   ping,
   getWidgets,
+  createWidget,
+  updateWidget,
 };
