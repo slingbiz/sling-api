@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
+const { WidgetOwnerShip } = require('../constants/appEnums');
 const { toJSON, paginate } = require('./plugins');
 
 const widgetSchema = mongoose.Schema(
   {
-    user: {
+    client_id: {
       type: String,
-      ref: 'User',
       required: true,
     },
     name: {
@@ -18,6 +18,11 @@ const widgetSchema = mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    ownership: {
+      type: String,
+      enum: [WidgetOwnerShip.PUBLIC, WidgetOwnerShip.PROTECTED, WidgetOwnerShip.PRIVATE],
+      required: true,
     },
     type: {
       type: String,
