@@ -9,8 +9,12 @@ const createWidget = async (widgetBody, clientId) => {
   if (await Widget.isTitleTaken(widgetBody.name)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Widget name already taken');
   }
-  const widget = await Widget.create({ ...widgetBody, client_id: clientId });
-  return widget;
+  try {
+    const widget = await Widget.create({ ...widgetBody, client_id: clientId });
+    return widget;
+  } catch (error) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Something went wront please try again later');
+  }
 };
 
 // const getWidgets = async (widgetType) => {
@@ -79,9 +83,12 @@ const updateWidget = async (id, widgetBody, clientId) => {
   if (!widget) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong ${widget}`);
   }
-  const widgets = await getWidgets({ type: widget.type, clientId });
-  console.log(widgets);
-  return widgets;
+  try {
+    const widgets = await getWidgets({ type: widget.type, clientId });
+    return widgets;
+  } catch (error) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Something went wront please try again later');
+  }
 };
 module.exports = {
   getWidgets,
