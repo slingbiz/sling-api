@@ -15,6 +15,7 @@ const setClient = async (req, res, next) => {
     // Validate token
     const user = await admin.auth().verifyIdToken(token);
     req.user = user;
+    // req.body = { ...req.body, user: user.id };
     req.token = token;
 
     // Verify client

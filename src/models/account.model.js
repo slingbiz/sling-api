@@ -6,7 +6,7 @@ const { pkgTypes } = require('../constants/pkgType');
 const acountSchema = mongoose.Schema(
   {
     user: {
-      type: mongoose.SchemaTypes.ObjectId,
+      type: String,
       ref: 'User',
       // required: true,
     },
