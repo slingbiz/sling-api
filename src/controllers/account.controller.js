@@ -1,24 +1,43 @@
 const httpStatus = require('http-status');
-const { CompanyRegistration, CompanyMembership, CompanyKeyCodeSetup } = require('../services/account.service');
+const {
+  CompanyRegistration,
+  CompanyMembership,
+  CompanyKeyCodeSetup,
+  FetchCompanyInformation,
+  ModifyCompanyInformation,
+} = require('../services/account.service');
 const catchAsync = require('../utils/catchAsync');
+const { tokenService } = require('../services');
 
 const CompanyRegistrationForm = catchAsync(async (req, res) => {
-  const form1 = await CompanyRegistration({ ...req.body });
-  res.status(httpStatus.CREATED).send({ form1 });
+  const apiKey = tokenService.generateApiToken(req.clientId);
+  const form = await CompanyRegistration({ ...req.body, apiKey });
+  res.status(httpStatus.CREATED).send(form);
 });
 const CompanyMembershipForm = catchAsync(async (req, res) => {
   const email = req.user?.email;
-  const form2 = await CompanyMembership(email, req.body.packageType);
-  res.status(httpStatus.CREATED).send({ form2 });
+  const form = await CompanyMembership(email, req.body.packageType);
+  res.status(httpStatus.CREATED).send(form);
 });
 const CompanyKeyCodeSetupForm = catchAsync(async (req, res) => {
   const email = req.user?.email;
-  const form3 = await CompanyKeyCodeSetup(email, req.body.data);
-  res.status(httpStatus.CREATED).send({ form3 });
+  const form = await CompanyKeyCodeSetup(email, req.body.data);
+  res.status(httpStatus.CREATED).send(form);
+});
+const UpdateCompanyInformation = catchAsync(async (req, res) => {
+  const form = await ModifyCompanyInformation(req.body.data.id, req.body.data);
+  res.status(httpStatus.CREATED).send(form);
+});
+const GetCompanyInformation = catchAsync(async (req, res) => {
+  const email = req.user?.email;
+  const form = await FetchCompanyInformation(email);
+  res.status(httpStatus.CREATED).send(form);
 });
 
 module.exports = {
   CompanyRegistrationForm,
   CompanyMembershipForm,
   CompanyKeyCodeSetupForm,
+  GetCompanyInformation,
+  UpdateCompanyInformation,
 };

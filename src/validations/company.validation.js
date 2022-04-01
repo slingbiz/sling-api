@@ -21,6 +21,36 @@ const membership = {
     // id: Joi.string().required(),
   }),
 };
+const companyInfo = {
+  body: Joi.object().keys({
+    email: Joi.string().required(),
+  }),
+};
+const companyUpdate = {
+  body: Joi.object().keys({
+    data: {
+      storeName: Joi.string(),
+      storeDomain: Joi.string(),
+      storeDescription: Joi.string(),
+      verificationStep: Joi.string(),
+      packageType: Joi.string(),
+      clientUrl: Joi.string(),
+      id: Joi.string(),
+      user: Joi.string(),
+      apiKey: Joi.string(),
+      email: Joi.string().required().email(),
+      orgName: Joi.string().required(),
+      companyName: Joi.string().required(),
+      address1: Joi.string().required(),
+      address2: Joi.allow(null).optional(),
+      phoneNumber: Joi.allow(null).required(),
+      city: Joi.string().required(),
+      zipCode: Joi.allow(null),
+      country: Joi.string().required(),
+      region: Joi.allow(null),
+    },
+  }),
+};
 const keycodesetup = {
   body: Joi.object().keys({
     // id: Joi.string().required(),
@@ -36,4 +66,6 @@ module.exports = {
   registration,
   membership,
   keycodesetup,
+  companyInfo,
+  companyUpdate,
 };

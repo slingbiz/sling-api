@@ -24,6 +24,10 @@ const generateToken = (userId, expires, type, secret = config.jwt.secret) => {
   return jwt.sign(payload, secret);
 };
 
+const generateApiToken = (clientId, secret = config.jwt.secret) => {
+  return jwt.sign({ clientId }, secret, {});
+};
+
 /**
  * Save a token
  * @param {string} token
@@ -127,4 +131,5 @@ module.exports = {
   generateAuthTokens,
   generateResetPasswordToken,
   generateVerifyEmailToken,
+  generateApiToken,
 };

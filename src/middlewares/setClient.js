@@ -2,6 +2,7 @@ const { admin } = require('../services/firebase.service');
 
 const setClient = async (req, res, next) => {
   try {
+    console.log(req.body);
     let token = req.header('authorization');
     if (!token) {
       return res.status(400).json({

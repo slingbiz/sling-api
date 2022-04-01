@@ -15,6 +15,22 @@ const acountSchema = mongoose.Schema(
       required: true,
       trim: true,
     },
+    storeName: {
+      type: String,
+      trim: true,
+    },
+    storeDomain: {
+      type: String,
+      trim: true,
+    },
+    storeDescription: {
+      type: String,
+      trim: true,
+    },
+    apiKey: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
