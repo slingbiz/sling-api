@@ -1,6 +1,6 @@
 const express = require('express');
 const helmet = require('helmet');
-const xss = require('xss-clean');
+// const xss = require('xss-clean');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const cors = require('cors');
@@ -32,7 +32,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // sanitize request data
-app.use(xss());
+// app.use(xss());
 app.use(mongoSanitize());
 
 // gzip compression
@@ -59,7 +59,7 @@ app.use('/v1', routes);
 
 // send back a 404 error for any unknown api request
 app.use((req, res, next) => {
-  console.log(req.url, 'req url')
+  console.log(req.url, 'req url');
   next(new ApiError(httpStatus.NOT_FOUND, 'Not found'));
 });
 

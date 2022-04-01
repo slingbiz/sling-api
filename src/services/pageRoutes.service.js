@@ -17,13 +17,16 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
     andArray.push({
       $or: [
         {
-          name: cond,
+          title: cond,
         },
         {
-          description: cond,
+          page_template: cond,
         },
         {
-          sku: cond,
+          sample_string: cond,
+        },
+        {
+          url_string: cond,
         },
       ],
     });
@@ -37,19 +40,19 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
   andArray.push({ $or: orArray });
 
   // Get widgets and total count
-  console.log(andArray, '[andArrayandArrayandArray]')
+  console.log(andArray, '[andArrayandArrayandArray]');
   const pageRoutesRes = await db.collection('page_routes').find({ $and: andArray }).skip(skip).limit(size).toArray();
   const totalRes = await db.collection('page_routes').count({ $and: andArray });
   return { pageRoutes: pageRoutesRes, tc: totalRes };
 };
 
 const saveRoute = async ({ req, clientId }) => {
+  console.log('saveRoute', req.body);
   const { name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
   const db = getDb();
   let saveRes = {};
   try {
     const updObj = {
-
       ownership: 'private',
       title: name,
       keys,
