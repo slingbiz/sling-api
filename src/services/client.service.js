@@ -25,6 +25,8 @@ const getInitConfig = async ({ clientId = 'demo-id' } = {}) => {
   return layoutConfig?.[0]?.config || 0;
 };
 
+
+
 // TODO make it configurable after login in the sling dashboard.
 const setInitConfig = async (reqBody, clientId = 'demo-id') => {
   console.log(reqBody, '@setInitConfig reqBody', clientId);

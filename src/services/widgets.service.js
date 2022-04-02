@@ -13,7 +13,7 @@ const createWidget = async (widgetBody, clientId) => {
     const widget = await Widget.create({ ...widgetBody, client_id: clientId });
     return widget;
   } catch (error) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Something went wront please try again later');
+    throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
   }
 };
 
@@ -87,7 +87,7 @@ const updateWidget = async (id, widgetBody, clientId) => {
     const widgets = await getWidgets({ type: widget.type, clientId });
     return widgets;
   } catch (error) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Something went wront please try again later');
+    throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
   }
 };
 module.exports = {
