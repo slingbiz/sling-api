@@ -5,6 +5,7 @@ const {
   CompanyKeyCodeSetup,
   FetchCompanyInformation,
   ModifyCompanyInformation,
+  ModifyStoreInformation,
 } = require('../services/account.service');
 const catchAsync = require('../utils/catchAsync');
 const { tokenService } = require('../services');
@@ -25,7 +26,11 @@ const CompanyKeyCodeSetupForm = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send(form);
 });
 const UpdateCompanyInformation = catchAsync(async (req, res) => {
-  const form = await ModifyCompanyInformation(req.body.data.id, req.body.data);
+  const form = await ModifyCompanyInformation(req.body.id, req.body.formData);
+  res.status(httpStatus.CREATED).send(form);
+});
+const UpdateStoreInformation = catchAsync(async (req, res) => {
+  const form = await ModifyStoreInformation(req.body.id, req.body.formData);
   res.status(httpStatus.CREATED).send(form);
 });
 const GetCompanyInformation = catchAsync(async (req, res) => {
@@ -40,4 +45,5 @@ module.exports = {
   CompanyKeyCodeSetupForm,
   GetCompanyInformation,
   UpdateCompanyInformation,
+  UpdateStoreInformation,
 };

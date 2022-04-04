@@ -40,11 +40,21 @@ const CompanyKeyCodeSetup = async (email, formData) => {
 };
 
 const ModifyCompanyInformation = async (id, formData) => {
+  console.log(id, formData);
   try {
-    const company = await Account.findOneAndUpdate({ id }, formData, { new: true });
+    const company = await Account.findByIdAndUpdate({ _id: id }, formData, { new: true });
     return company;
   } catch (e) {
-    console.log('Error in CompanyKeyCodeSetup [account.service]: ', e.message);
+    console.log('Error in ModifyCompanyInformation [account.service]: ', e.message);
+  }
+};
+
+const ModifyStoreInformation = async (id, formData) => {
+  try {
+    const company = await Account.findByIdAndUpdate({ _id: id }, formData, { new: true });
+    return company;
+  } catch (e) {
+    console.log('Error in ModifyStoreInformation [account.service]: ', e.message);
   }
 };
 
@@ -53,7 +63,7 @@ const FetchCompanyInformation = async (email) => {
     const company = await Account.findOne({ email });
     return company;
   } catch (e) {
-    console.log('Error in CompanyKeyCodeSetup [account.service]: ', e.message);
+    console.log('Error in FetchCompanyInformation [account.service]: ', e.message);
   }
 };
 
@@ -63,4 +73,5 @@ module.exports = {
   CompanyKeyCodeSetup,
   FetchCompanyInformation,
   ModifyCompanyInformation,
+  ModifyStoreInformation,
 };

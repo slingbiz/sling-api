@@ -7,8 +7,7 @@ const acountSchema = mongoose.Schema(
   {
     user: {
       type: String,
-      ref: 'User',
-      // required: true,
+      required: true,
     },
     orgName: {
       type: String,
@@ -24,6 +23,10 @@ const acountSchema = mongoose.Schema(
       trim: true,
     },
     storeDescription: {
+      type: String,
+      trim: true,
+    },
+    wlIP: {
       type: String,
       trim: true,
     },

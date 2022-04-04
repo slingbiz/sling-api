@@ -28,25 +28,33 @@ const companyInfo = {
 };
 const companyUpdate = {
   body: Joi.object().keys({
-    data: {
+    id: Joi.string().required(),
+    formData: {
       storeName: Joi.string(),
       storeDomain: Joi.string(),
       storeDescription: Joi.string(),
+      wlIp: Joi.string(),
+    },
+  }),
+};
+const storeUpdate = {
+  body: Joi.object().keys({
+    id: Joi.string().required(),
+    formData: {
       verificationStep: Joi.string(),
       packageType: Joi.string(),
       clientUrl: Joi.string(),
-      id: Joi.string(),
       user: Joi.string(),
       apiKey: Joi.string(),
       email: Joi.string().required().email(),
-      orgName: Joi.string().required(),
-      companyName: Joi.string().required(),
-      address1: Joi.string().required(),
+      orgName: Joi.string(),
+      companyName: Joi.string(),
+      address1: Joi.string(),
       address2: Joi.allow(null).optional(),
-      phoneNumber: Joi.allow(null).required(),
-      city: Joi.string().required(),
+      phoneNumber: Joi.allow(null),
+      city: Joi.string(),
       zipCode: Joi.allow(null),
-      country: Joi.string().required(),
+      country: Joi.string(),
       region: Joi.allow(null),
     },
   }),
@@ -68,4 +76,5 @@ module.exports = {
   keycodesetup,
   companyInfo,
   companyUpdate,
+  storeUpdate,
 };
