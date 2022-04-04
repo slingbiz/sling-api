@@ -4,7 +4,7 @@ const serviceAccount = require('../../serviceAccountKey.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://upwork-75d81-default-rtdb.firebaseio.com',
+  databaseURL: process.env.FIREBASE_AUTH_DB_URL,
 });
 
 module.exports = {
