@@ -8,6 +8,7 @@ const acountSchema = mongoose.Schema(
     user: {
       type: String,
       required: true,
+      trim: true,
     },
     orgName: {
       type: String,
@@ -26,7 +27,7 @@ const acountSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
-    wlIP: {
+    wlIp: {
       type: String,
       trim: true,
     },

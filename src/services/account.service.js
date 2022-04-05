@@ -4,21 +4,21 @@ const Account = require('../models/account.model');
 const ApiError = require('../utils/ApiError');
 const { CLIENT_VERIFICATION_STEPS } = require('../constants/common');
 
-const CompanyRegistration = async (formData) => {
+const CompanyRegistration = async (formData, user) => {
   if (await Account.isEmailTaken(formData.email)) {
     throw new ApiError(httpStatus.BAD_REQUEST, `${formData.email} Email already taken`);
   }
   try {
     const verificationStep = CLIENT_VERIFICATION_STEPS.COMPANY_REGISTERED;
-    const company = await Account.create({ ...formData, verificationStep });
+    const company = await Account.create({ ...formData, verificationStep, user });
     return company;
   } catch (e) {
     console.log('Error in CompanyRegistration [account.service]: ', e.message);
   }
 };
 
-const CompanyMembership = async (email, data) => {
-  const query = { email };
+const CompanyMembership = async (user, data) => {
+  const query = { user };
   const verificationStep = CLIENT_VERIFICATION_STEPS.MEMBERSHIP_SELECTED;
   try {
     const company = await Account.findOneAndUpdate(query, { packageType: data, verificationStep }, { new: true });
@@ -28,39 +28,39 @@ const CompanyMembership = async (email, data) => {
   }
 };
 
-const CompanyKeyCodeSetup = async (email, formData) => {
-  const query = { email };
+const CompanyKeyCodeSetup = async (user, formData) => {
+  const query = { user };
   const verificationStep = CLIENT_VERIFICATION_STEPS.COMPLETED;
   try {
     const company = await Account.findOneAndUpdate(query, { ...formData, verificationStep }, { new: true });
+    console.log(company);
     return company;
   } catch (e) {
     console.log('Error in CompanyKeyCodeSetup [account.service]: ', e.message);
   }
 };
 
-const ModifyCompanyInformation = async (id, formData) => {
-  console.log(id, formData);
+const ModifyCompanyInformation = async (user, formData) => {
   try {
-    const company = await Account.findByIdAndUpdate({ _id: id }, formData, { new: true });
+    const company = await Account.findOneAndUpdate({ user }, formData, { new: true });
     return company;
   } catch (e) {
     console.log('Error in ModifyCompanyInformation [account.service]: ', e.message);
   }
 };
 
-const ModifyStoreInformation = async (id, formData) => {
+const ModifyStoreInformation = async (user, formData) => {
   try {
-    const company = await Account.findByIdAndUpdate({ _id: id }, formData, { new: true });
+    const company = await Account.findOneAndUpdate({ user }, formData, { new: true });
     return company;
   } catch (e) {
     console.log('Error in ModifyStoreInformation [account.service]: ', e.message);
   }
 };
 
-const FetchCompanyInformation = async (email) => {
+const FetchCompanyInformation = async (user) => {
   try {
-    const company = await Account.findOne({ email });
+    const company = await Account.findOne({ user });
     return company;
   } catch (e) {
     console.log('Error in FetchCompanyInformation [account.service]: ', e.message);

@@ -8,6 +8,7 @@ const registration = {
     companyName: Joi.string().required(),
     address1: Joi.string().required(),
     address2: Joi.allow(null).optional(),
+    wlIP: Joi.allow(null).optional(),
     phoneNumber: Joi.allow(null).required(),
     city: Joi.string().required(),
     zipCode: Joi.allow(null),
@@ -28,7 +29,6 @@ const companyInfo = {
 };
 const companyUpdate = {
   body: Joi.object().keys({
-    id: Joi.string().required(),
     formData: {
       storeName: Joi.string(),
       storeDomain: Joi.string(),
@@ -39,7 +39,6 @@ const companyUpdate = {
 };
 const storeUpdate = {
   body: Joi.object().keys({
-    id: Joi.string().required(),
     formData: {
       verificationStep: Joi.string(),
       packageType: Joi.string(),
