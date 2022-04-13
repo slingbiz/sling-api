@@ -3,6 +3,7 @@ const httpStatus = require('http-status');
 const Account = require('../models/account.model');
 const ApiError = require('../utils/ApiError');
 const { CLIENT_VERIFICATION_STEPS } = require('../constants/common');
+const { getDb } = require('../utils/mongoInit');
 
 const CompanyRegistration = async (formData, user) => {
   if (await Account.isEmailTaken(formData.email)) {
@@ -67,6 +68,31 @@ const FetchCompanyInformation = async (user) => {
   }
 };
 
+const CompanyInitialSetup = async (clientId) => {
+  try {
+    const db = getDb();
+
+    const widgetPublic = await db.collection('widgets').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
+    const widgetInsert = await db
+      .collection('widgets')
+      .insertMany(widgetPublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+
+    const layoutPublic = await db.collection('layout_config').find({ client_id: 'default' }).project({ _id: 0 }).toArray();
+    const layoutInsert = await db
+      .collection('layout_config')
+      .insertMany(layoutPublic.map((element) => ({ ...element, client_id: clientId })));
+
+    const routePublic = await db.collection('page_routes').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
+    const routeInsert = await db
+      .collection('page_routes')
+      .insertMany(routePublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+
+    // return { widgetInsert, layoutInsert, routeInsert };
+  } catch (e) {
+    console.log('Error in CompanyInitialSetup [account.service]: ', e.message);
+  }
+};
+
 module.exports = {
   CompanyRegistration,
   CompanyMembership,
@@ -74,4 +100,5 @@ module.exports = {
   FetchCompanyInformation,
   ModifyCompanyInformation,
   ModifyStoreInformation,
+  CompanyInitialSetup,
 };

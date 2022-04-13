@@ -50,24 +50,24 @@ const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
     });
   }
   // Get all public
-  const orArray = [{ ownership: 'public' }];
+  // const orArray = [{ ownership: 'public' }];
 
   // Or private for the client
-  orArray.push({ ownership: 'private', client_id: clientId });
+  andArray.push({ ownership: 'private', client_id: clientId });
 
   // or protected and bought subscriptions;
   // get all subscriptions
 
-  const subscriptionsRes = await db.collection('widget_subscriptions').find({ client_id: clientId }).toArray();
-  const widgetsSubscribed = subscriptionsRes?.[0]?.subscriptions;
-  if (widgetsSubscribed?.length) {
-    const oids = [];
-    widgetsSubscribed.forEach(function (item) {
-      oids.push(new ObjectID(item));
-    });
-    orArray.push({ ownership: 'protected', _id: { $in: oids } });
-  }
-  andArray.push({ $or: orArray });
+  // const subscriptionsRes = await db.collection('widget_subscriptions').find({ client_id: clientId }).toArray();
+  // const widgetsSubscribed = subscriptionsRes?.[0]?.subscriptions;
+  // if (widgetsSubscribed?.length) {
+  //   const oids = [];
+  //   widgetsSubscribed.forEach(function (item) {
+  //     oids.push(new ObjectID(item));
+  //   });
+  //   orArray.push({ ownership: 'protected', _id: { $in: oids } });
+  // }
+  // andArray.push({ $or: orArray });
 
   // TODO: Cache this response.
   console.log(JSON.stringify(andArray), 'andArrayandArray');

@@ -32,12 +32,12 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
   const orArray = [{ ownership: 'public' }];
 
   // Or private for the client
-  orArray.push({ ownership: 'private', client_id: clientId });
+  andArray.push({ ownership: 'private', client_id: clientId });
 
-  andArray.push({ $or: orArray });
+  // andArray.push({ $or: orArray });
 
   // Get widgets and total count
-  console.log(andArray, '[andArrayandArrayandArray]')
+  console.log(andArray, '[andArrayandArrayandArray]');
   const pageRoutesRes = await db.collection('page_routes').find({ $and: andArray }).skip(skip).limit(size).toArray();
   const totalRes = await db.collection('page_routes').count({ $and: andArray });
   return { pageRoutes: pageRoutesRes, tc: totalRes };
@@ -49,7 +49,6 @@ const saveRoute = async ({ req, clientId }) => {
   let saveRes = {};
   try {
     const updObj = {
-
       ownership: 'private',
       title: name,
       keys,

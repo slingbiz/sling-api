@@ -6,6 +6,7 @@ const {
   GetCompanyInformation,
   UpdateCompanyInformation,
   UpdateStoreInformation,
+  InitializeCompanySetup,
 } = require('../../controllers/account.controller');
 const validate = require('../../middlewares/validate');
 const companyValidation = require('../../validations/company.validation');
@@ -19,5 +20,6 @@ router.post('/keycodesetup', setClient, validate(companyValidation.keycodesetup)
 router.post('/getcompanyinfo', setClient, validate(companyValidation.companyInfo), GetCompanyInformation);
 router.post('/updatecompanyinfo', setClient, validate(companyValidation.companyUpdate), UpdateCompanyInformation);
 router.post('/updatestoreinfo', setClient, validate(companyValidation.storeUpdate), UpdateStoreInformation);
+router.post('/companyInitialize', setClient, InitializeCompanySetup);
 
 module.exports = router;
