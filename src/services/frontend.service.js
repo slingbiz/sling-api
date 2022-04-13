@@ -87,8 +87,12 @@ const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
 
 const getRouteConstants = () => {};
 
+const removeTrailingSlash = (str) => {
+  return str.replace(/\/+$/, '');
+};
+
 const getMatchingRoute = async ({ asPath, query, clientId }) => {
-  console.log(asPath, query, '--aspath--query');
+  console.log(asPath, query, '--aspath--query', clientId);
   const db = getDb();
 
   // TODO: Cache this response.
@@ -98,9 +102,16 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   // eslint-disable-next-line no-restricted-syntax
   for (const routeObj of allRoutes) {
     const { url_string: urlString, keys } = routeObj;
-    const pattern = new UrlPattern(urlString);
-    const matchRes = pattern.match(asPath);
-    console.log(matchRes, '[matchRes] [getMatchingRoute]', urlString, keys.length, Object.keys(matchRes || {})?.length);
+    const pattern = new UrlPattern(removeTrailingSlash(urlString));
+    const matchRes = pattern.match(removeTrailingSlash(asPath));
+    console.log(
+      matchRes,
+      '[matchRes] [getMatchingRoute]',
+      urlString,
+      asPath,
+      keys.length,
+      Object.keys(matchRes || {})?.length
+    );
     if (matchRes && Object.keys(matchRes)?.length === keys?.length) {
       routeRet = routeObj;
       break;
