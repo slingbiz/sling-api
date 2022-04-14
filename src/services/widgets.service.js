@@ -6,7 +6,7 @@ const ApiError = require('../utils/ApiError');
 const { getDb } = require('../utils/mongoInit');
 
 const createWidget = async (widgetBody, clientId) => {
-  if (await Widget.isTitleTaken(widgetBody.name)) {
+  if (await Widget.isTitleTaken(widgetBody.name, widgetBody.type, clientId)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Widget name already taken');
   }
   try {

@@ -12,7 +12,7 @@ const getWidgets = catchAsync(async (req, res) => {
   const { query, page, size, type } = req.body;
   const { clientId } = req;
   console.log('widget prop', req.body, clientId);
-  const widgets = await widgetsService.getWidgets({ ...req.body, clientId });
+  const widgets = await widgetsService.getWidgets({ query, page, size, type, clientId });
   res.status(httpStatus.OK).send({ widgets });
 });
 

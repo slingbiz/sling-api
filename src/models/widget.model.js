@@ -66,8 +66,8 @@ const widgetSchema = mongoose.Schema(
 widgetSchema.plugin(toJSON);
 widgetSchema.plugin(paginate);
 
-widgetSchema.statics.isTitleTaken = async function (name, excludeUserId) {
-  const widget = await this.findOne({ name, _id: { $ne: excludeUserId } });
+widgetSchema.statics.isTitleTaken = async function (name, type, clientId, excludeUserId) {
+  const widget = await this.findOne({ name, client_id: clientId, type, _id: { $ne: excludeUserId } });
   return !!widget;
 };
 

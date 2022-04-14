@@ -69,25 +69,37 @@ const FetchCompanyInformation = async (user) => {
 };
 
 const CompanyInitialSetup = async (clientId) => {
+  const db = getDb();
   try {
-    const db = getDb();
-
     const widgetPublic = await db.collection('widgets').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
-    const widgetInsert = await db
-      .collection('widgets')
-      .insertMany(widgetPublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+    try {
+      await db
+        .collection('widgets')
+        .insertMany(widgetPublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+    } catch (e) {
+      console.log('Error in CompanyInitialSetup [widgets setup - account.service]: ', e.message);
+    }
 
-    const layoutPublic = await db.collection('layout_config').find({ client_id: 'default' }).project({ _id: 0 }).toArray();
-    const layoutInsert = await db
-      .collection('layout_config')
-      .insertMany(layoutPublic.map((element) => ({ ...element, client_id: clientId })));
-
+    try {
+      const layoutPublic = await db.collection('layout_config').find({ client_id: 'default' }).project({ _id: 0 }).toArray();
+      await db.collection('layout_config').insertMany(
+        layoutPublic.map((element) => ({
+          ...element,
+          client_id: clientId,
+        }))
+      );
+    } catch (e) {
+      console.log('Error in CompanyInitialSetup [layout setup - account.service]: ', e.message);
+    }
     const routePublic = await db.collection('page_routes').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
-    const routeInsert = await db
-      .collection('page_routes')
-      .insertMany(routePublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+    try {
+      await db
+        .collection('page_routes')
+        .insertMany(routePublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+    } catch (e) {
+      console.log('Error in CompanyInitialSetup [routes setup - account.service]: ', e.message);
+    }
 
-    // return { widgetInsert, layoutInsert, routeInsert };
   } catch (e) {
     console.log('Error in CompanyInitialSetup [account.service]: ', e.message);
   }
