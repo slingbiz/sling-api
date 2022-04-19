@@ -48,7 +48,7 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
 
 const saveRoute = async ({ req, clientId }) => {
   console.log('saveRoute', req.body);
-  const { name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
+  const { _id, name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
   const db = getDb();
   let saveRes = {};
   try {
@@ -63,7 +63,7 @@ const saveRoute = async ({ req, clientId }) => {
     };
     await db
       .collection('page_routes')
-      .updateOne({ client_id: clientId, url_string: url }, { $set: { ...updObj } }, { upsert: true });
+      .updateOne({ client_id: clientId, _id: ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
 
     saveRes = { status: true, msg: 'Route updated successfully' };
   } catch (e) {

@@ -99,9 +99,13 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   let routeRet = {};
+
   // eslint-disable-next-line no-restricted-syntax
   for (const routeObj of allRoutes) {
-    const { url_string: urlString, keys } = routeObj;
+    let { url_string: urlString, keys } = routeObj;
+
+    //Convert to Matching Pattern string
+    urlString  = urlString.replace(/</g,':').replace(/>/g, '');
     const pattern = new UrlPattern(removeTrailingSlash(urlString));
     const matchRes = pattern.match(removeTrailingSlash(asPath));
     console.log(

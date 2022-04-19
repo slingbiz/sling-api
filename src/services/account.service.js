@@ -72,34 +72,66 @@ const CompanyInitialSetup = async (clientId) => {
   const db = getDb();
   try {
     const widgetPublic = await db.collection('widgets').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
+    const addedOn = new Date();
+    const updatedOn = new Date();
     try {
-      await db
-        .collection('widgets')
-        .insertMany(widgetPublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+      await db.collection('widgets').insertMany(
+        widgetPublic.map((element) => ({
+          ...element,
+          client_id: clientId,
+          ownership: 'private',
+          added_on: addedOn,
+          updated_on: updatedOn,
+        }))
+      );
     } catch (e) {
       console.log('Error in CompanyInitialSetup [widgets setup - account.service]: ', e.message);
     }
 
     try {
-      const layoutPublic = await db.collection('layout_config').find({ client_id: 'default' }).project({ _id: 0 }).toArray();
+      const layoutPublic = await db.collection('layout_config').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
       await db.collection('layout_config').insertMany(
         layoutPublic.map((element) => ({
           ...element,
+          ownership: 'private',
           client_id: clientId,
+          added_on: addedOn,
+          updated_on: updatedOn,
         }))
       );
     } catch (e) {
       console.log('Error in CompanyInitialSetup [layout setup - account.service]: ', e.message);
     }
+
     const routePublic = await db.collection('page_routes').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
     try {
-      await db
-        .collection('page_routes')
-        .insertMany(routePublic.map((element) => ({ ...element, client_id: clientId, ownership: 'private' })));
+      await db.collection('page_routes').insertMany(
+        routePublic.map((element) => ({
+          ...element,
+          client_id: clientId,
+          ownership: 'private',
+          added_on: addedOn,
+          updated_on: updatedOn,
+        }))
+      );
     } catch (e) {
       console.log('Error in CompanyInitialSetup [routes setup - account.service]: ', e.message);
     }
 
+    const apiPublic = await db.collection('api_meta').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
+    try {
+      await db.collection('api_meta').insertMany(
+        apiPublic.map((element) => ({
+          ...element,
+          client_id: clientId,
+          ownership: 'private',
+          added_on: addedOn,
+          updated_on: updatedOn,
+        }))
+      );
+    } catch (e) {
+      console.log('Error in CompanyInitialSetup [api setup - account.service]: ', e.message);
+    }
   } catch (e) {
     console.log('Error in CompanyInitialSetup [account.service]: ', e.message);
   }
