@@ -28,8 +28,15 @@ const getInitConfig = async ({ clientId = 'demo-id' } = {}) => {
 // TODO make it configurable after login in the sling dashboard.
 const setInitConfig = async (reqBody, clientId = 'demo-id') => {
   console.log(reqBody, '@setInitConfig reqBody', clientId);
-  const { pageKey, root, meta, isNewRecord } = reqBody;
+  const { pageKey, root = {}, meta = {}, isNewRecord } = reqBody;
   const db = getDb();
+  const setObj = {};
+  if (Object.keys(root).length) {
+    setObj[`config.${pageKey}.root`] = root;
+  }
+  if (Object.keys(meta).length) {
+    setObj[`config.${pageKey}.meta`] = meta;
+  }
   let saveRes = {};
   try {
     // TODO: Fetch user info from auth middleware after checking roles and permissions.
@@ -48,9 +55,7 @@ const setInitConfig = async (reqBody, clientId = 'demo-id') => {
         return { status: false, msg: `Page Layout (${pageKey}) already exists` };
       }
     }
-    await db
-      .collection('layout_config')
-      .updateOne({ client_id: clientId }, { $set: { [`config.${pageKey}`]: { root, meta } } }, { upsert: true });
+    await db.collection('layout_config').updateOne({ client_id: clientId }, { $set: setObj }, { upsert: true });
     saveRes = { status: true, msg: 'Layout updated successfully' };
   } catch (e) {
     console.log(e.message, '[setInitConfig] Service');

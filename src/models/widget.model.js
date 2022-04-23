@@ -13,6 +13,11 @@ const widgetSchema = mongoose.Schema(
       required: true,
       trim: true,
     },
+    key: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     description: {
       type: String,
       required: true,

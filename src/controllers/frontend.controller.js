@@ -39,7 +39,6 @@ const getInitProps = catchAsync(async (req, res) => {
     // console.log(initConfigData);
     return;
   }
-
   const { page_template: pageTemplate } = matchingRoute;
   const layoutConfig = await frontendService.getLayout({ asPath, query, clientId, pageTemplate });
 

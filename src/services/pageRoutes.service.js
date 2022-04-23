@@ -61,9 +61,14 @@ const saveRoute = async ({ req, clientId }) => {
       sample_string: sampleString,
       page_template: pageTemplate,
     };
-    await db
-      .collection('page_routes')
-      .updateOne({ client_id: clientId, _id: ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
+
+    if (_id) {
+      await db
+        .collection('page_routes')
+        .updateOne({ client_id: clientId, _id: new ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
+    } else {
+      await db.collection('page_routes').insert({ ...updObj });
+    }
 
     saveRes = { status: true, msg: 'Route updated successfully' };
   } catch (e) {
