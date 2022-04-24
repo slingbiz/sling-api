@@ -31,7 +31,7 @@ const companyUpdate = {
   body: Joi.object().keys({
     formData: {
       storeName: Joi.string(),
-      storeDomain: Joi.string(),
+      clientUrl: Joi.string(),
       storeDescription: Joi.string(),
       wlIp: Joi.string(),
     },
