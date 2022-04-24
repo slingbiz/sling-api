@@ -17,13 +17,16 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
     andArray.push({
       $or: [
         {
-          name: cond,
+          title: cond,
         },
         {
-          description: cond,
+          page_template: cond,
         },
         {
-          sku: cond,
+          sample_string: cond,
+        },
+        {
+          url_string: cond,
         },
       ],
     });
@@ -32,16 +35,50 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
   const orArray = [{ ownership: 'public' }];
 
   // Or private for the client
-  orArray.push({ ownership: 'private', client_id: clientId });
+  andArray.push({ ownership: 'private', client_id: clientId });
 
-  andArray.push({ $or: orArray });
+  // andArray.push({ $or: orArray });
 
   // Get widgets and total count
+  console.log(andArray, '[andArrayandArrayandArray]');
   const pageRoutesRes = await db.collection('page_routes').find({ $and: andArray }).skip(skip).limit(size).toArray();
   const totalRes = await db.collection('page_routes').count({ $and: andArray });
   return { pageRoutes: pageRoutesRes, tc: totalRes };
 };
 
+const saveRoute = async ({ req, clientId }) => {
+  console.log('saveRoute', req.body);
+  const { _id, name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
+  const db = getDb();
+  let saveRes = {};
+  try {
+    const updObj = {
+      ownership: 'private',
+      title: name,
+      keys,
+      client_id: clientId,
+      url_string: decodeURI(url),
+      sample_string: sampleString,
+      page_template: pageTemplate,
+    };
+
+    if (_id) {
+      await db
+        .collection('page_routes')
+        .updateOne({ client_id: clientId, _id: new ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
+    } else {
+      await db.collection('page_routes').insert({ ...updObj });
+    }
+
+    saveRes = { status: true, msg: 'Route updated successfully' };
+  } catch (e) {
+    console.log(e.message, '[setInitConfig] Service');
+    saveRes = { status: false, msg: e.message };
+  }
+  return saveRes;
+};
+
 module.exports = {
   getRoutes,
+  saveRoute,
 };

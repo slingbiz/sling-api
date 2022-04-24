@@ -16,6 +16,13 @@ const initConfig = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ initConfigData, layoutConfig });
 });
 
+const getTemplates = catchAsync(async (req, res) => {
+  const { clientId } = req;
+  const layoutConfig = await clientService.getInitConfig({ clientId });
+  const templates = Object.keys(layoutConfig || {});
+  res.status(httpStatus.OK).send({ templates });
+});
+
 /**
  * To be called in the _app.js getInitialProps for the frontend.
  * @type {function(...[*]=)}
@@ -30,7 +37,7 @@ const getInitProps = catchAsync(async (req, res) => {
 
   // Get Page Template Type & Constants from route
 
-  const layoutConfig = await clientService.getInitConfig({ asPath, query });
+  const layoutConfig = await clientService.getInitConfig({ asPath, query, clientId });
 
   // Get initial api requests set in the dashboard.
   // Fetch response, set in a custom object.
@@ -52,4 +59,5 @@ module.exports = {
   initConfig,
   getInitProps,
   setConfig,
+  getTemplates,
 };

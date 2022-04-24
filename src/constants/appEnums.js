@@ -58,3 +58,9 @@ module.exports.AuthType = {
   AUTH0: 'auth0',
   JWT_AUTH: 'jwt_auth',
 };
+
+module.exports.WidgetOwnerShip = {
+  PRIVATE: 'private',
+  PUBLIC: 'public',
+  PROTECTED: 'protected',
+};
