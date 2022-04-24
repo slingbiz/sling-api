@@ -4,7 +4,7 @@ const serviceAccount = require('../../serviceAccountKey.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://my-project-1518948515247.firebaseio.com',
+  databaseURL: process.env.FIREBASE_AUTH_DB_URL,
 });
 
 module.exports = {

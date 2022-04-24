@@ -14,7 +14,7 @@ const { tokenTypes } = require('../config/tokens');
 const loginUserWithEmailAndPassword = async (email, password) => {
   const user = await userService.getUserByEmail(email);
   if (!user || !(await user.isPasswordMatch(password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+    throw new ApiError(httpStatus.UNAUTHORIZED, '[Sling] Incorrect email or password');
   }
   return user;
 };
@@ -77,6 +77,7 @@ const resetPassword = async (resetPasswordToken, newPassword) => {
  * @returns {Promise}
  */
 const verifyEmail = async (verifyEmailToken) => {
+  console.log(verifyEmailToken);
   try {
     const verifyEmailTokenDoc = await tokenService.verifyToken(verifyEmailToken, tokenTypes.VERIFY_EMAIL);
     const user = await userService.getUserById(verifyEmailTokenDoc.user);
@@ -86,10 +87,10 @@ const verifyEmail = async (verifyEmailToken) => {
     await Token.deleteMany({ user: user.id, type: tokenTypes.VERIFY_EMAIL });
     await userService.updateUserById(user.id, { isEmailVerified: true });
   } catch (error) {
+    console.log(error.message, '[verifyEmail] Error');
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Email verification failed');
   }
 };
-
 
 module.exports = {
   loginUserWithEmailAndPassword,

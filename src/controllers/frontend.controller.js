@@ -17,7 +17,7 @@ const ping = catchAsync(async (req, res) => {
 const getInitProps = catchAsync(async (req, res) => {
   const { pathname, query, asPath } = req.body;
   const { clientId } = req;
-
+  console.log(clientId, '[getInitProps] ClientID');
   if (pathname !== GLOBAL_SLING_HANDLER) {
     console.log('[getInitProps] Not a part of global sling handler. - ', asPath);
     res
@@ -36,10 +36,9 @@ const getInitProps = catchAsync(async (req, res) => {
       .status(httpStatus.OK)
       .send({ initConfig: initConfigData, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
     console.log('[getInitProps] No matching route found in Global Sling Handler. - ', asPath);
-    console.log(initConfigData);
+    // console.log(initConfigData);
     return;
   }
-
   const { page_template: pageTemplate } = matchingRoute;
   const layoutConfig = await frontendService.getLayout({ asPath, query, clientId, pageTemplate });
 
