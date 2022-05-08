@@ -132,6 +132,40 @@ const CompanyInitialSetup = async (clientId) => {
     } catch (e) {
       console.log('Error in CompanyInitialSetup [api setup - account.service]: ', e.message);
     }
+
+    const mediaPublic = await db.collection('media').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
+    try {
+      await db.collection('media').insertMany(
+        mediaPublic.map((element) => ({
+          ...element,
+          client_id: clientId,
+          ownership: 'private',
+          added_on: addedOn,
+          updated_on: updatedOn,
+        }))
+      );
+    } catch (e) {
+      console.log('Error in CompanyInitialSetup [media setup - account.service]: ', e.message);
+    }
+
+    const mediaConstantsPublic = await db
+      .collection('media_constants')
+      .find({ ownership: 'public' })
+      .project({ _id: 0 })
+      .toArray();
+    try {
+      await db.collection('media_constants').insertMany(
+        mediaConstantsPublic.map((element) => ({
+          ...element,
+          client_id: clientId,
+          ownership: 'private',
+          added_on: addedOn,
+          updated_on: updatedOn,
+        }))
+      );
+    } catch (e) {
+      console.log('Error in CompanyInitialSetup [media_constants setup - account.service]: ', e.message);
+    }
   } catch (e) {
     console.log('Error in CompanyInitialSetup [account.service]: ', e.message);
   }
