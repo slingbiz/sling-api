@@ -11,7 +11,7 @@ const signMeUp = async (body) => {
   const db = getDb();
   let resSave = {};
   try {
-    await db.collection('early_access').insertOne(body);
+    await db.collection('early_access').insertOne({...body,added_on: new Date() });
     resSave = { status: true, msg: 'Request saved successfully. One of our representatives will get back to you shortly.' };
   } catch (e) {
     console.log(e.message, '@signMeUp Service');
