@@ -22,8 +22,16 @@ const saveRoute = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ response });
 });
 
+const updateRoute = catchAsync(async (req, res) => {
+  const { clientId } = req;
+
+  const response = await pageRoutesService.updateRoute({ req, clientId });
+  res.status(httpStatus.OK).send({ response });
+});
+
 module.exports = {
   ping,
   getRoutes,
   saveRoute,
+  updateRoute,
 };

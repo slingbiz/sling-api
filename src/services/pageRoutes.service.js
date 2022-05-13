@@ -48,7 +48,15 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
 
 const saveRoute = async ({ req, clientId }) => {
   console.log('saveRoute', req.body);
-  const { _id, name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
+  const {
+    _id,
+    name,
+    keys,
+    page_template: pageTemplate,
+    url,
+    sample_string: sampleString,
+    page_layout_config: pageLayoutConfig,
+  } = req.body;
   const db = getDb();
   let saveRes = {};
   try {
@@ -60,8 +68,10 @@ const saveRoute = async ({ req, clientId }) => {
       url_string: decodeURI(url),
       sample_string: sampleString,
       page_template: pageTemplate,
+      page_layout_config: pageLayoutConfig,
     };
 
+    console.log('saveRoutes', updObj);
     if (_id) {
       await db
         .collection('page_routes')
@@ -77,8 +87,46 @@ const saveRoute = async ({ req, clientId }) => {
   }
   return saveRes;
 };
+const updateRoute = async ({ req, clientId }) => {
+  console.log('updateRoute', req.body);
+  const {
+    _id,
+    name,
+    keys,
+    page_template: pageTemplate,
+    url,
+    sample_string: sampleString,
+    page_layout_config: pageLayoutConfig,
+  } = req.body;
+  const db = getDb();
+  let saveRes = {};
+  try {
+    const updObj = {
+      ownership: 'private',
+      title: name,
+      keys,
+      client_id: clientId,
+      url_string: decodeURI(url),
+      sample_string: sampleString,
+      page_template: pageTemplate,
+      page_layout_config: pageLayoutConfig,
+    };
+
+    console.log('updateRoutes', updObj);
+    await db
+      .collection('page_routes')
+      .updateOne({ client_id: clientId, _id: new ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
+
+    saveRes = { status: true, msg: 'Route updated successfully' };
+  } catch (e) {
+    console.log(e.message, '[setInitConfig] Service');
+    saveRes = { status: false, msg: e.message };
+  }
+  return saveRes;
+};
 
 module.exports = {
   getRoutes,
   saveRoute,
+  updateRoute,
 };
