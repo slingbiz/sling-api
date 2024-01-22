@@ -10,7 +10,7 @@ const { getDb } = require('../utils/mongoInit');
  * @param userId
  * @returns {Promise<*|number>}
  */
-const getLayout = async ({ asPath, query, clientId = 'demo-id', pageTemplate }) => {
+const getLayout = async ({ clientId = 'demo-id' }) => {
   // Get Db
   const db = getDb();
   let layoutConfig = {};
@@ -43,7 +43,7 @@ const setInitConfig = async (reqBody) => {
   return saveRes;
 };
 
-const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
+const getSSRApiRes = async ({ pathname, clientId }) => {
   if (pathname !== GLOBAL_SLING_HANDLER) {
     return {};
   }
@@ -63,7 +63,7 @@ const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
 
   // Todo: Pass headers, and request body from params;
   ssrApis.forEach((v, k) => {
-    const { url, type, headers, params, body, unique_id_fe: uniqueIdFe, sling_mapping: slingMapping } = v;
+    const { url, type, body, unique_id_fe: uniqueIdFe, sling_mapping: slingMapping } = v;
     responseKeyMapper[k] = uniqueIdFe;
     apiRetResponse[uniqueIdFe] = { ...apiRetResponse[uniqueIdFe], sling_mapping: slingMapping };
     if (type === 'GET') {
@@ -103,11 +103,10 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   // eslint-disable-next-line no-restricted-syntax
   for (const routeObj of allRoutes) {
     let { url_string: urlString, keys } = routeObj;
-
-    //Convert to Matching Pattern string
-    urlString  = urlString.replace(/</g,':').replace(/>/g, '');
+    // Convert to Matching Pattern string
+    urlString = urlString.replace(/</g, ':').replace(/>/g, '');
     const pattern = new UrlPattern(removeTrailingSlash(urlString));
-    const matchRes = pattern.match(removeTrailingSlash(asPath));
+    const matchRes = pattern.match(removeTrailingSlash(asPath.replace(/^\//, ''))); // Remove '/' from the starting
     console.log(
       matchRes,
       '[matchRes] [getMatchingRoute]',
