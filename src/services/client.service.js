@@ -14,12 +14,9 @@ const getInitConfig = async ({ clientId = 'demo-id' } = {}) => {
   const db = getDb();
   let layoutConfig = {};
 
-  console.log(clientId, '[clientId]');
   try {
     layoutConfig = await db.collection('layout_config').find({ client_id: clientId }).toArray();
-    console.log(clientId, 'clientIdclientId@client.service.js', layoutConfig);
   } catch (e) {
-    console.log(e.message, '[getInitConfig] Service');
     throw new ApiError(httpStatus['500'], 'Something bad happened while fetching the config');
   }
   return layoutConfig?.[0]?.config || 0;
@@ -27,7 +24,6 @@ const getInitConfig = async ({ clientId = 'demo-id' } = {}) => {
 
 // TODO make it configurable after login in the sling dashboard.
 const setInitConfig = async (reqBody, clientId = 'demo-id') => {
-  console.log(reqBody, '@setInitConfig reqBody', clientId);
   const { pageKey, root = {}, meta = {}, isNewRecord } = reqBody;
   const db = getDb();
   const setObj = {};
@@ -58,13 +54,27 @@ const setInitConfig = async (reqBody, clientId = 'demo-id') => {
     await db.collection('layout_config').updateOne({ client_id: clientId }, { $set: setObj }, { upsert: true });
     saveRes = { status: true, msg: 'Layout updated successfully' };
   } catch (e) {
-    console.log(e.message, '[setInitConfig] Service');
     saveRes = { status: false, msg: e.message };
   }
   return saveRes;
 };
 
-const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
+/**
+ * Delete page template
+ */
+const deletePageTemplate = async ({ pageKey }, clientId = 'demo-id') => {
+  const db = getDb();
+  let deleteRes = {};
+  try {
+    await db.collection('layout_config').updateOne({ client_id: clientId }, { $unset: { [`config.${pageKey}`]: '' } });
+    deleteRes = { status: true, msg: 'Layout deleted successfully' };
+  } catch (e) {
+    deleteRes = { status: false, msg: e.message };
+  }
+  return deleteRes;
+};
+
+const getSSRApiRes = async ({ pathname, clientId }) => {
   if (pathname !== GLOBAL_SLING_HANDLER) {
     return {};
   }
@@ -72,7 +82,6 @@ const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
 
   // Find api list based on route page template
   const ssrApis = await db.collection('api_meta').find({ client_id: clientId, ssr: true }).toArray();
-  // console.log(ssrApis, '@ssrapis');
 
   const axiosPromiseArr = [];
   const apiRetResponse = {};
@@ -80,7 +89,7 @@ const getSSRApiRes = async ({ asPath, query, pathname, clientId }) => {
 
   // Todo: Pass headers, and request body from params;
   ssrApis.forEach((v, k) => {
-    const { url, type, headers, params, unique_id_fe: uniqueIdFe } = v;
+    const { url, unique_id_fe: uniqueIdFe } = v;
     responseKeyMapper[k] = uniqueIdFe;
     axiosPromiseArr.push(axios.get(url));
   });
@@ -98,6 +107,7 @@ const getRouteConstants = () => {};
 module.exports = {
   getInitConfig,
   setInitConfig,
+  deletePageTemplate,
   getSSRApiRes,
   getRouteConstants,
 };

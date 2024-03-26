@@ -1,5 +1,4 @@
 const httpStatus = require('http-status');
-const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 
 const initConfigData = require('../constants/initConfig');
@@ -31,8 +30,6 @@ const getInitProps = catchAsync(async (req, res) => {
   const { pathname, query, asPath } = req.body;
   const { clientId } = req;
 
-  console.log(req.body, 'req@getInitProps', clientId);
-
   // Todo call all async using Promise.All
 
   // Get Page Template Type & Constants from route
@@ -54,9 +51,17 @@ const setConfig = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(setRes);
 });
 
+// To Delete Page Template
+const deletePageTemplate = catchAsync(async (req, res) => {
+  const { clientId } = req;
+  const deleteRes = await clientService.deletePageTemplate(req.body, clientId);
+  res.status(httpStatus.OK).send(deleteRes);
+});
+
 module.exports = {
   ping,
   initConfig,
+  deletePageTemplate,
   getInitProps,
   setConfig,
   getTemplates,

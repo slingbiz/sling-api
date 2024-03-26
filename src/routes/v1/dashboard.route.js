@@ -14,5 +14,6 @@ router
 
 // TODO: Add middleware to authenticate client secret key
 router.route('/setConfig').post(setClient, dashboardController.setConfig).get(setClient, dashboardController.setConfig);
+router.route('/deletePageTemplate').post(setClient, dashboardController.deletePageTemplate);
 
 module.exports = router;
