@@ -4,14 +4,29 @@ const logger = require('./config/logger');
 
 const mongoUtil = require('./utils/mongoInit');
 
-let server;
-mongoUtil.connectToServer(function (err, client) {
-  app.db = client;
-});
- 
+// Import and configure the serverless-mongodb package
+const { MongoClient } = require('mongodb');
 
-app.listen(config.port, () => {
-  logger.info(`Listening to port ${config.port} & ${client}`);
-});
+// Define the serverless function
+module.exports = async (req, res) => {
+  try {
+    // Establish MongoDB connection using custom function
+    mongoUtil.connectToServer(async function (err, client) {
+      if (err) {
+        console.error('Error connecting to MongoDB:', err);
+        res.status(500).send('Internal Server Error');
+        return;
+      }
 
-module.exports = app;
+      // Set the MongoDB client in the app object for use in routes
+      app.db = client;
+
+      // Handle incoming HTTP requests using the Express app
+      app(req, res);
+    });
+  } catch (error) {
+    // Handle errors
+    console.error('Error:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
