@@ -4,36 +4,43 @@ const logger = require('./config/logger');
 
 const mongoUtil = require('./utils/mongoInit');
 
-let server;
-mongoUtil.connectToServer(function (err, client) {
-  app.db = client;
-  server = app.listen(config.port, () => {
-    logger.info(`Listening to port ${config.port} & ${client}`);
-  });
-});
-
-const exitHandler = () => {
-  if (server) {
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(1);
+async function startServer() {
+  try {
+    const client = await mongoUtil.connectToServer();
+    app.db = client;
+    const server = app.listen(config.port, () => {
+      logger.info(`Listening to port ${config.port} & ${client}`);
     });
-  } else {
+
+    const exitHandler = () => {
+      if (server) {
+        server.close(() => {
+          logger.info('Server closed');
+          process.exit(1);
+        });
+      } else {
+        process.exit(1);
+      }
+    };
+
+    const unexpectedErrorHandler = (error) => {
+      logger.error(error);
+      exitHandler();
+    };
+
+    process.on('uncaughtException', unexpectedErrorHandler);
+    process.on('unhandledRejection', unexpectedErrorHandler);
+
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM received');
+      if (server) {
+        server.close();
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
-};
+}
 
-const unexpectedErrorHandler = (error) => {
-  logger.error(error);
-  exitHandler();
-};
-
-process.on('uncaughtException', unexpectedErrorHandler);
-process.on('unhandledRejection', unexpectedErrorHandler);
-
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received');
-  if (server) {
-    server.close();
-  }
-});
+startServer();

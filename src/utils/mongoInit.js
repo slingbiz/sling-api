@@ -9,7 +9,7 @@ let _db;
 let _dbGoose;
 
 module.exports = {
-  connectToServer(callback) {
+  async connectToServer(callback) {
     MongoClient.connect(process.env.MONGODB_URL, function (err, client) {
       if (err) {
         logger.error(`Failed to connect to the database. ${err.stack}`);
