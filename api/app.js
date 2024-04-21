@@ -14,6 +14,13 @@ const routes = require('./routes/v1');
 const { errorConverter, errorHandler } = require('./middlewares/error');
 const ApiError = require('./utils/ApiError');
 const setClient = require('./middlewares/setClient');
+const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
+
+const logger = require('../config/logger');
+
+let _db;
+let _dbGoose;
 
 const app = express();
 
