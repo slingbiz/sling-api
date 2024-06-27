@@ -4,7 +4,6 @@ const UrlPattern = require('url-pattern');
 const ApiError = require('../utils/ApiError');
 const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
-const { match } = require('path-to-regexp');
 
 /**
  * Returns initial config to create the page layout.
@@ -89,37 +88,44 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
 const getRouteConstants = () => {};
 
 const removeTrailingSlash = (str) => {
-  return str.replace(/\/+$/, '');
+  return str.replace(/\/$/, '');
 };
 
 const getMatchingRoute = async ({ asPath, query, clientId }) => {
   console.log(asPath, query, '--aspath--query', clientId);
   const db = getDb();
 
+  // TODO: Cache this response.
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   let routeRet = {};
 
   for (const routeObj of allRoutes) {
     let { url_string: urlString, keys } = routeObj;
+    // Convert to Matching Pattern string
     urlString = urlString.replace(/</g, ':').replace(/>/g, '');
-    const matchPattern = match(urlString, { decode: decodeURIComponent });
+    const pattern = new UrlPattern(removeTrailingSlash(urlString));
+
+    // Remove '/' from the starting
     const cleanedAsPath = removeTrailingSlash(asPath.replace(/^\//, ''));
-    const matchRes = matchPattern(cleanedAsPath);
+    const matchRes = pattern.match(cleanedAsPath);
 
     console.log('Route Object:', routeObj);
-    console.log('Cleaned URL String:', urlString);
+    console.log('Converted urlString:', urlString);
+    console.log('Pattern:', pattern);
     console.log('Cleaned asPath:', cleanedAsPath);
     console.log('Match Result:', matchRes);
     console.log('Keys:', keys);
+    console.log('Match Keys Length:', Object.keys(matchRes || {}).length);
 
-    if (matchRes && Object.keys(matchRes.params).length === keys.length) {
+    if (matchRes && Object.keys(matchRes).length === keys.length) {
       routeRet = routeObj;
       break;
     }
   }
   return routeRet;
 };
+
 
 module.exports = {
   getLayout,
