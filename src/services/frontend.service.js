@@ -106,8 +106,8 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     urlString = urlString.replace(/</g, ':').replace(/>/g, '');
     const pattern = new UrlPattern(removeTrailingSlash(urlString));
 
-    // Remove '/' from the starting
-    const cleanedAsPath = removeTrailingSlash(asPath.replace(/^\//, ''));
+    // Add leading slash to cleanedAsPath
+    const cleanedAsPath = '/' + removeTrailingSlash(asPath.replace(/^\//, ''));
     const matchRes = pattern.match(cleanedAsPath);
 
     console.log('Route Object:', routeObj);
