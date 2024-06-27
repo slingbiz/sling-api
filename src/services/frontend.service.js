@@ -4,6 +4,7 @@ const UrlPattern = require('url-pattern');
 const ApiError = require('../utils/ApiError');
 const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
+const { match } = require('path-to-regexp');
 
 /**
  * Returns initial config to create the page layout.
@@ -95,27 +96,24 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   console.log(asPath, query, '--aspath--query', clientId);
   const db = getDb();
 
-  // TODO: Cache this response.
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   let routeRet = {};
 
-  // eslint-disable-next-line no-restricted-syntax
   for (const routeObj of allRoutes) {
     let { url_string: urlString, keys } = routeObj;
-    // Convert to Matching Pattern string
     urlString = urlString.replace(/</g, ':').replace(/>/g, '');
-    const pattern = new UrlPattern(removeTrailingSlash(urlString));
-    const matchRes = pattern.match(removeTrailingSlash(asPath.replace(/^\//, ''))); // Remove '/' from the starting
-    console.log(
-      matchRes,
-      '[matchRes] [getMatchingRoute]',
-      urlString,
-      asPath,
-      keys.length,
-      Object.keys(matchRes || {})?.length
-    );
-    if (matchRes && Object.keys(matchRes)?.length === keys?.length) {
+    const matchPattern = match(urlString, { decode: decodeURIComponent });
+    const cleanedAsPath = removeTrailingSlash(asPath.replace(/^\//, ''));
+    const matchRes = matchPattern(cleanedAsPath);
+
+    console.log('Route Object:', routeObj);
+    console.log('Cleaned URL String:', urlString);
+    console.log('Cleaned asPath:', cleanedAsPath);
+    console.log('Match Result:', matchRes);
+    console.log('Keys:', keys);
+
+    if (matchRes && Object.keys(matchRes.params).length === keys.length) {
       routeRet = routeObj;
       break;
     }
