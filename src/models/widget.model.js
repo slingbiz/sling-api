@@ -76,6 +76,6 @@ widgetSchema.statics.isTitleTaken = async function (name, type, clientId, exclud
   return !!widget;
 };
 
-const Widget = mongoose.model('Widget', widgetSchema);
+const Widget = mongoose.models.Widget || mongoose.model('Widget', widgetSchema);
 
 module.exports = Widget;

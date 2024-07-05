@@ -123,6 +123,6 @@ acountSchema.statics.isEmailTaken = async function (email, excludeUserId) {
 /**
  * @typedef Account
  */
-const Account = mongoose.model('client_meta', acountSchema, 'client_meta');
+const Account = mongoose.models.client_meta || mongoose.model('client_meta', acountSchema, 'client_meta');
 
 module.exports = Account;
