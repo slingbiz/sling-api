@@ -19,7 +19,7 @@ const registration = {
 const membership = {
   body: Joi.object().keys({
     packageType: Joi.string().required(),
-    // id: Joi.string().required(),
+    id: Joi.string().optional(),
   }),
 };
 const companyInfo = {
@@ -60,7 +60,7 @@ const storeUpdate = {
 };
 const keycodesetup = {
   body: Joi.object().keys({
-    // id: Joi.string().required(),
+    id: Joi.string().optional(),
     data: {
       // secret: Joi.string().required(),
       clientUrl: Joi.string().required(),
