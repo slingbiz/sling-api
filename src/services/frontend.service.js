@@ -99,33 +99,41 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   let routeRet = {};
-
   for (const routeObj of allRoutes) {
     let { url_string: urlString, keys } = routeObj;
-    // Convert to Matching Pattern string
+
+    // Convert URL string to matching pattern
     urlString = urlString.replace(/</g, ':').replace(/>/g, '');
-    const pattern = new UrlPattern(removeTrailingSlash(urlString));
+    const cleanedUrlString = removeTrailingSlash(urlString);
 
-    // Add leading slash to cleanedAsPath
+    // Create regular expression from cleanedUrlString
+    const regexPattern = new RegExp(`^/${cleanedUrlString}$`);
+
+    // Clean asPath
     const cleanedAsPath = '/' + removeTrailingSlash(asPath.replace(/^\//, ''));
-    const matchRes = pattern.match(cleanedAsPath);
 
+    // Attempt to match the pattern
+    const matchRes = cleanedAsPath.match(regexPattern);
+
+    // Debugging logs
     console.log('Route Object:', routeObj);
-    console.log('Converted urlString:', urlString);
-    console.log('Pattern:', pattern);
+    console.log('Original urlString:', urlString);
+    console.log('Cleaned urlString:', cleanedUrlString);
+    console.log('Regex Pattern:', regexPattern);
     console.log('Cleaned asPath:', cleanedAsPath);
     console.log('Match Result:', matchRes);
     console.log('Keys:', keys);
-    console.log('Match Keys Length:', Object.keys(matchRes || {}).length);
+    console.log('Match Keys Length:', matchRes ? matchRes.length : 0);
 
-    if (matchRes && Object.keys(matchRes).length === keys.length) {
+    // Check if matchRes is valid and matches the keys length
+    if (matchRes && matchRes.length === 1 && keys.length === 0) {
       routeRet = routeObj;
       break;
     }
   }
+
   return routeRet;
 };
-
 
 module.exports = {
   getLayout,

@@ -1,10 +1,10 @@
 const express = require('express');
 const { pageRoutesController } = require('../../controllers');
-const setClient = require('../../middlewares/setClient');
+const auth = require('../../middlewares/auth');
 
 const router = express.Router();
 router.route('/').post(pageRoutesController.ping).get(pageRoutesController.ping);
-router.route('/dash/getRoutes').post(setClient, pageRoutesController.getRoutes);
-router.route('/saveRoute').post(setClient, pageRoutesController.saveRoute);
+router.route('/dash/getRoutes').post(auth(), pageRoutesController.getRoutes);
+router.route('/saveRoute').post(auth(), pageRoutesController.saveRoute);
 
 module.exports = router;

@@ -12,14 +12,14 @@ const validate = require('../../middlewares/validate');
 const companyValidation = require('../../validations/company.validation');
 
 const router = express.Router();
-const setClient = require('../../middlewares/setClient');
+const auth = require('../../middlewares/auth');
 
-router.post('/registration', setClient, validate(companyValidation.registration), CompanyRegistrationForm);
-router.post('/membership', setClient, validate(companyValidation.membership), CompanyMembershipForm);
-router.post('/keycodesetup', setClient, validate(companyValidation.keycodesetup), CompanyKeyCodeSetupForm);
-router.post('/getcompanyinfo', setClient, validate(companyValidation.companyInfo), GetCompanyInformation);
-router.post('/updatecompanyinfo', setClient, validate(companyValidation.companyUpdate), UpdateCompanyInformation);
-router.post('/updatestoreinfo', setClient, validate(companyValidation.storeUpdate), UpdateStoreInformation);
-router.post('/companyInitialize', setClient, InitializeCompanySetup);
+router.post('/registration', auth(), validate(companyValidation.registration), CompanyRegistrationForm);
+router.post('/membership', auth(), validate(companyValidation.membership), CompanyMembershipForm);
+router.post('/keycodesetup', auth(), validate(companyValidation.keycodesetup), CompanyKeyCodeSetupForm);
+router.post('/getcompanyinfo', auth(), validate(companyValidation.companyInfo), GetCompanyInformation);
+router.post('/updatecompanyinfo', auth(), validate(companyValidation.companyUpdate), UpdateCompanyInformation);
+router.post('/updatestoreinfo', auth(), validate(companyValidation.storeUpdate), UpdateStoreInformation);
+router.post('/companyInitialize', auth(), InitializeCompanySetup);
 
 module.exports = router;
