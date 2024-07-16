@@ -91,6 +91,11 @@ const removeTrailingSlash = (str) => {
   return str.replace(/\/$/, '');
 };
 
+// Utility function to convert URL string to regex pattern
+function convertToRegexPattern(urlString) {
+  return `^${urlString.replace(/<([^>]+)>/g, '([^/]+)').replace(/\//g, '\\/')}$`;
+}
+
 const getMatchingRoute = async ({ asPath, query, clientId }) => {
   console.log(asPath, query, '--aspath--query', clientId);
   const db = getDb();
@@ -99,18 +104,24 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   let routeRet = {};
-  for (const routeObj of allRoutes) {
-    let { url_string: urlString, keys } = routeObj;
 
-    // Convert URL string to matching pattern
-    urlString = urlString.replace(/</g, ':').replace(/>/g, '');
+  // Iterate over all routes and attempt to match the asPath
+  for (const routeObj of allRoutes) {
+    const { url_string: urlString, keys } = routeObj;
+
+    // Clean URL string
     const cleanedUrlString = removeTrailingSlash(urlString);
 
-    // Create regular expression from cleanedUrlString
-    const regexPattern = new RegExp(`^/${cleanedUrlString}$`);
+    // Determine if the route is static or dynamic
+    const isDynamic = keys && keys.length > 0;
+
+    // Create the appropriate pattern
+    const regexPattern = isDynamic
+      ? new RegExp(convertToRegexPattern(cleanedUrlString))
+      : new RegExp(`^/${cleanedUrlString}$`);
 
     // Clean asPath
-    const cleanedAsPath = '/' + removeTrailingSlash(asPath.replace(/^\//, ''));
+    const cleanedAsPath = `/${removeTrailingSlash(asPath.replace(/^\//, ''))}`;
 
     // Attempt to match the pattern
     const matchRes = cleanedAsPath.match(regexPattern);
@@ -123,10 +134,10 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     console.log('Cleaned asPath:', cleanedAsPath);
     console.log('Match Result:', matchRes);
     console.log('Keys:', keys);
-    console.log('Match Keys Length:', matchRes ? matchRes.length : 0);
+    console.log('Match Keys Length:', matchRes ? matchRes.length - 1 : 0); // Subtract 1 to exclude the full match
 
     // Check if matchRes is valid and matches the keys length
-    if (matchRes && matchRes.length === 1 && keys.length === 0) {
+    if (matchRes && matchRes.length - 1 === keys.length) {
       routeRet = routeObj;
       break;
     }
