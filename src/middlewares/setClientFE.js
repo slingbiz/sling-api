@@ -4,7 +4,6 @@ const setClientFE = async (req, res, next) => {
   try {
     const clientId = req.header('client');
     const license = req.header('license');
-    console.log(license, clientId, 'setClientFE');
     const db = getDb();
 
     if (!clientId || !license) {
@@ -17,9 +16,7 @@ const setClientFE = async (req, res, next) => {
 
     // Validate secret
     const user = (await db.collection('client_meta').findOne({ apiKey: license })) || {};
-    console.log(user._id, '[user]');
     if (!user._id) {
-      console.log('[setClientFe] - [Invalid Secret key. Please contact admin]');
       return res.status(400).json({
         error: {
           message: 'Invalid Secret key. Please contact admin.',

@@ -76,10 +76,16 @@ const verifyEmail = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+const tick = catchAsync(async (req, res) => {
+  await authService.tick(req.body);
+  res.send({ status: true });
+});
+
 module.exports = {
   register,
   login,
   logout,
+  tick,
   refreshTokens,
   forgotPassword,
   resetPassword,
