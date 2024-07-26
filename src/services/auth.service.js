@@ -4,6 +4,7 @@ const userService = require('./user.service');
 const Token = require('../models/token.model');
 const ApiError = require('../utils/ApiError');
 const { tokenTypes } = require('../config/tokens');
+const { getDb } = require('../utils/mongoInit');
 
 /**
  * Login with username and password
@@ -77,7 +78,6 @@ const resetPassword = async (resetPasswordToken, newPassword) => {
  * @returns {Promise}
  */
 const verifyEmail = async (verifyEmailToken) => {
-  console.log(verifyEmailToken);
   try {
     const verifyEmailTokenDoc = await tokenService.verifyToken(verifyEmailToken, tokenTypes.VERIFY_EMAIL);
     const user = await userService.getUserById(verifyEmailTokenDoc.user);
@@ -87,14 +87,32 @@ const verifyEmail = async (verifyEmailToken) => {
     await Token.deleteMany({ user: user.id, type: tokenTypes.VERIFY_EMAIL });
     await userService.updateUserById(user.id, { isEmailVerified: true });
   } catch (error) {
-    console.log(error.message, '[verifyEmail] Error');
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Email verification failed');
   }
+};
+
+/**
+ * Tick
+ * @returns {Promise}
+ */
+const tick = async (requestBody) => {
+  const db = getDb();
+  if (!requestBody.email) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Email is required');
+  }
+  // make sure unique email is ticked
+  const ticked = await db.collection('tick').findOne({ email: requestBody.email });
+  if (ticked) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Email already ticked');
+  }
+  const res = await db.collection('tick').insertOne({ email: requestBody.email, time: new Date() });
+  return res;
 };
 
 module.exports = {
   loginUserWithEmailAndPassword,
   logout,
+  tick,
   refreshAuth,
   resetPassword,
   verifyEmail,
