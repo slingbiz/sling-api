@@ -1,4 +1,4 @@
-const { ObjectID } = require('mongodb');
+const { ObjectId } = require('mongodb');
 
 const { getDb } = require('../utils/mongoInit');
 
@@ -40,14 +40,18 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
   // andArray.push({ $or: orArray });
 
   // Get widgets and total count
-  console.log(andArray, '[andArrayandArrayandArray]');
-  const pageRoutesRes = await db.collection('page_routes').find({ $and: andArray }).skip(skip).limit(size).toArray();
+  const pageRoutesRes = await db
+    .collection('page_routes')
+    .find({ $and: andArray })
+    .sort({ _id: -1 })
+    .skip(skip)
+    .limit(size)
+    .toArray();
   const totalRes = await db.collection('page_routes').count({ $and: andArray });
   return { pageRoutes: pageRoutesRes, tc: totalRes };
 };
 
 const saveRoute = async ({ req, clientId }) => {
-  console.log('saveRoute', req.body);
   const { _id, name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
   const db = getDb();
   let saveRes = {};
@@ -65,20 +69,73 @@ const saveRoute = async ({ req, clientId }) => {
     if (_id) {
       await db
         .collection('page_routes')
-        .updateOne({ client_id: clientId, _id: new ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
+        .updateOne({ client_id: clientId, _id: new ObjectId(_id) }, { $set: { ...updObj } }, { upsert: true });
     } else {
-      await db.collection('page_routes').insert({ ...updObj });
+      await db.collection('page_routes').insertOne({ ...updObj });
     }
 
     saveRes = { status: true, msg: 'Route updated successfully' };
   } catch (e) {
-    console.log(e.message, '[setInitConfig] Service');
     saveRes = { status: false, msg: e.message };
   }
   return saveRes;
 };
 
+// Delete route
+const deleteRoute = async ({ req, clientId }) => {
+  const _id = req.params.id;
+  const db = getDb();
+  let deleteRes = {};
+  try {
+    await db.collection('page_routes').deleteOne({ client_id: clientId, _id: new ObjectId(_id) });
+    deleteRes = { status: true, msg: 'Page Route deleted successfully' };
+  } catch (e) {
+    deleteRes = { status: false, msg: e.message };
+  }
+  return deleteRes;
+};
+
+// Update Route
+const updateRoute = async ({ req, clientId }) => {
+  const { _id, name, keys, page_template: pageTemplate, url, sample_string: sampleString } = req.body;
+  const db = getDb();
+  let updateRes = {};
+  try {
+    const updObj = {
+      ownership: 'private',
+      client_id: clientId,
+    };
+
+    if (name) {
+      updObj.title = name;
+    }
+    if (keys) {
+      updObj.keys = keys;
+    }
+    if (pageTemplate) {
+      updObj.page_template = pageTemplate;
+    }
+    if (url) {
+      updObj.url_string = decodeURI(url);
+    }
+    if (sampleString) {
+      updObj.sample_string = sampleString;
+    }
+
+    await db
+      .collection('page_routes')
+      .updateOne({ client_id: clientId, _id: new ObjectID(_id) }, { $set: { ...updObj } }, { upsert: true });
+
+    updateRes = { status: true, msg: 'Route updated successfully' };
+  } catch (e) {
+    updateRes = { status: false, msg: e.message };
+  }
+  return updateRes;
+};
+
 module.exports = {
   getRoutes,
   saveRoute,
+  deleteRoute,
+  updateRoute,
 };

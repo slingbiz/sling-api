@@ -22,8 +22,23 @@ const saveRoute = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ response });
 });
 
+// Delete route
+const deleteRoute = catchAsync(async (req, res) => {
+  const { clientId } = req;
+  const response = await pageRoutesService.deleteRoute({ req, clientId });
+  res.status(httpStatus.OK).send({ response });
+});
+
+// Update Route
+const updateRoute = catchAsync(async (req, res) => {
+  const { clientId } = req;
+  const response = await pageRoutesService.updateRoute({ req, clientId });
+  res.status(httpStatus.OK).send({ response });
+});
 module.exports = {
   ping,
   getRoutes,
   saveRoute,
+  deleteRoute,
+  updateRoute
 };
