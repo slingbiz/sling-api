@@ -1,5 +1,7 @@
 const httpStatus = require('http-status');
 // const { Account } = require('../models');
+const fs = require('fs');
+const path = require('path');
 const Account = require('../models/account.model');
 const ApiError = require('../utils/ApiError');
 const { CLIENT_VERIFICATION_STEPS } = require('../constants/common');
@@ -68,9 +70,48 @@ const FetchCompanyInformation = async (user) => {
   }
 };
 
+// Function to import public data from the init_data.js file
+const importPublicData = async (db) => {
+  const scriptPath = path.resolve(__dirname, '../scripts/init_data.js');
+
+  if (!fs.existsSync(scriptPath)) {
+    console.log('Error: init_data.js file does not exist at path:', scriptPath);
+    return;
+  }
+
+  const scriptContent = fs.readFileSync(scriptPath, 'utf-8');
+  const queries = scriptContent.split('\n');
+
+  for (const query of queries) {
+    if (query.trim()) {
+      try {
+        // Extract collection name and data from the query
+        const match = query.match(/db\.(\w+)\.insert\((.*)\);/);
+        if (match) {
+          const collectionName = match[1];
+          const data = JSON.parse(match[2]);
+          await db.collection(collectionName).insertOne(data);
+        }
+      } catch (e) {
+        console.log('Error executing query: ', query, e.message);
+      }
+    }
+  }
+};
+
 const CompanyInitialSetup = async (clientId) => {
   const db = getDb();
   try {
+    // Check if public data exist for major collections
+    const widgetPublicCount = await db.collection('widgets').countDocuments({ ownership: 'public' });
+    const layoutPublicCount = await db.collection('layout_config').countDocuments({ ownership: 'public' });
+    const routePublicCount = await db.collection('page_routes').countDocuments({ ownership: 'public' });
+
+    if (widgetPublicCount === 0 || layoutPublicCount === 0 || routePublicCount === 0) {
+      // Import public data
+      await importPublicData(db);
+    }
+
     const widgetPublic = await db.collection('widgets').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
     const addedOn = new Date();
     const updatedOn = new Date();
