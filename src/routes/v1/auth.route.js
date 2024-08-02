@@ -11,7 +11,7 @@ router.post('/tick', validate(authValidation.tick), authController.tick);
 router.post('/login', validate(authValidation.login), authController.login);
 router.post('/logout', auth(), validate(authValidation.logout), authController.logout);
 router.post('/refresh-tokens', auth(), validate(authValidation.refreshTokens), authController.refreshTokens);
-router.post('/forgot-password', auth(), validate(authValidation.forgotPassword), authController.forgotPassword);
+router.post('/forgot-password', validate(authValidation.forgotPassword), authController.forgotPassword);
 router.post('/reset-password', auth(), validate(authValidation.resetPassword), authController.resetPassword);
 router.post('/send-verification-email', auth(), authController.sendVerificationEmail);
 router.get('/send-verification-email-bytoken', auth(), authController.sendVerificationEmailByToken);
