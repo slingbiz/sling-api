@@ -9,5 +9,6 @@ router.post('/', auth(), widgetsController.createWidget);
 router.put('/', auth(), widgetsController.updateWidget);
 // router.get('/', setClient, widgetsController.getWidgets);
 router.route('/dash/getWidgets').post(auth(), widgetsController.getWidgets);
+router.route('/getWidgets').post(auth(), widgetsController.getWidgets);
 
 module.exports = router;

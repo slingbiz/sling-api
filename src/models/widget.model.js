@@ -37,6 +37,7 @@ const widgetSchema = mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      default: 'Widgets', // Add default to Widgets
     },
     props: [
       {
@@ -71,8 +72,9 @@ const widgetSchema = mongoose.Schema(
 widgetSchema.plugin(toJSON);
 widgetSchema.plugin(paginate);
 
-widgetSchema.statics.isTitleTaken = async function (name, type, clientId, excludeUserId) {
-  const widget = await this.findOne({ name, client_id: clientId, type, _id: { $ne: excludeUserId } });
+widgetSchema.statics.isKeyTaken = async function (key, type, clientId, excludeUserId) {
+  console.log(key, type, clientId, '[key, type, clientId]');
+  const widget = await this.findOne({ key, client_id: clientId, type, _id: { $ne: excludeUserId } });
   return !!widget;
 };
 
