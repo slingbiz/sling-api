@@ -37,7 +37,7 @@ const widgetSchema = mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      default: 'Widgets', // Add default to Widgets
+      default: 'Widgets', // Default icon
     },
     props: [
       {
@@ -57,9 +57,22 @@ const widgetSchema = mongoose.Schema(
           trim: true,
         },
         default: {
-          type: String,
+          type: mongoose.Schema.Types.Mixed, // Support both string and number as default value
           trim: true,
         },
+        options: [
+          {
+            value: {
+              type: mongoose.Schema.Types.Mixed, // Allow options to have both string and number values
+              required: true,
+            },
+            label: {
+              type: String,
+              required: true,
+              trim: true,
+            },
+          },
+        ], // Adding support for options
       },
     ],
   },

@@ -6,7 +6,7 @@ const { getDb } = require('../utils/mongoInit');
 
 const createWidget = async (widgetBody, clientId) => {
   if (await Widget.isKeyTaken(widgetBody.key, widgetBody.type, clientId)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Widget Key already taken');
+    throw new ApiError(httpStatus.BAD_REQUEST, `Widget Key already taken, Key: ${widgetBody.key}`);
   }
   try {
     const widget = await Widget.create({ ...widgetBody, client_id: clientId });
@@ -21,7 +21,7 @@ const createWidget = async (widgetBody, clientId) => {
 //   return { widgets, tc: widgets.length };
 // };
 
-const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
+const getWidgets = async ({ page = 0, size = 50, query, clientId, type }) => {
   // await sleep(5000);
   const db = getDb();
   const skip = page * size;
