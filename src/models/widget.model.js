@@ -37,6 +37,7 @@ const widgetSchema = mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      default: 'Widgets', // Default icon
     },
     props: [
       {
@@ -56,9 +57,22 @@ const widgetSchema = mongoose.Schema(
           trim: true,
         },
         default: {
-          type: String,
+          type: mongoose.Schema.Types.Mixed, // Support both string and number as default value
           trim: true,
         },
+        options: [
+          {
+            value: {
+              type: mongoose.Schema.Types.Mixed, // Allow options to have both string and number values
+              required: true,
+            },
+            label: {
+              type: String,
+              required: true,
+              trim: true,
+            },
+          },
+        ], // Adding support for options
       },
     ],
   },
@@ -71,8 +85,9 @@ const widgetSchema = mongoose.Schema(
 widgetSchema.plugin(toJSON);
 widgetSchema.plugin(paginate);
 
-widgetSchema.statics.isTitleTaken = async function (name, type, clientId, excludeUserId) {
-  const widget = await this.findOne({ name, client_id: clientId, type, _id: { $ne: excludeUserId } });
+widgetSchema.statics.isKeyTaken = async function (key, type, clientId, excludeUserId) {
+  console.log(key, type, clientId, '[key, type, clientId]');
+  const widget = await this.findOne({ key, client_id: clientId, type, _id: { $ne: excludeUserId } });
   return !!widget;
 };
 

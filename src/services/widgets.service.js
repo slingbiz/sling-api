@@ -1,13 +1,12 @@
 const httpStatus = require('http-status');
-const { ObjectID } = require('mongodb');
 const { Widget } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 const { getDb } = require('../utils/mongoInit');
 
 const createWidget = async (widgetBody, clientId) => {
-  if (await Widget.isTitleTaken(widgetBody.name, widgetBody.type, clientId)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Widget name already taken');
+  if (await Widget.isKeyTaken(widgetBody.key, widgetBody.type, clientId)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Widget Key already taken, Key: ${widgetBody.key}`);
   }
   try {
     const widget = await Widget.create({ ...widgetBody, client_id: clientId });
@@ -22,7 +21,7 @@ const createWidget = async (widgetBody, clientId) => {
 //   return { widgets, tc: widgets.length };
 // };
 
-const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
+const getWidgets = async ({ page = 0, size = 50, query, clientId, type }) => {
   // await sleep(5000);
   const db = getDb();
   const skip = page * size;
@@ -70,7 +69,7 @@ const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
   // andArray.push({ $or: orArray });
 
   // TODO: Cache this response.
-  console.log(JSON.stringify(andArray), 'andArrayandArray');
+  // console.log(JSON.stringify(andArray), 'andArrayandArray');
   // Get widgets and total count
   const widgetsRes = await db.collection('widgets').find({ $and: andArray }).skip(skip).limit(size).toArray();
   const totalRes = await db.collection('widgets').count({ $and: andArray });
@@ -78,7 +77,11 @@ const getWidgets = async ({ page = 0, size = 10, query, clientId, type }) => {
 };
 
 const updateWidget = async (id, widgetBody, clientId) => {
-  const widget = await Widget.findByIdAndUpdate(id, widgetBody);
+  const widget = await Widget.findByIdAndUpdate(
+    id,
+    widgetBody,
+    { new: true, upsert: true } // new: true returns the updated document, upsert: true creates a new document if none exists
+  );
 
   if (!widget) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong ${widget}`);
@@ -90,8 +93,31 @@ const updateWidget = async (id, widgetBody, clientId) => {
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
   }
 };
+
+const updateWidgetByKey = async (key, widgetBody, clientId) => {
+  let widget;
+  try {
+    widget = await Widget.findOneAndUpdate(
+      { key, client_id: clientId },
+      { $set: { ...widgetBody } },
+      { new: true, upsert: false } // new: true returns the updated document, upsert: true creates a new document if none exists
+    );
+  } catch (err) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Something went wrong in updating the Widget with Key ${key}. Error: ${err.message}`
+    );
+  }
+
+  if (!widget) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong in updating the Widget with Key ${key}`);
+  }
+  return widget;
+};
+
 module.exports = {
   getWidgets,
   createWidget,
   updateWidget,
+  updateWidgetByKey,
 };
