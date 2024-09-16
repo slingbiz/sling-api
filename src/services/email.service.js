@@ -1,4 +1,8 @@
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+
+const mailjet = require('node-mailjet');
 const config = require('../config/config');
 const logger = require('../config/logger');
 
@@ -69,10 +73,67 @@ To verify your email, click on this link: ${verificationEmailUrl}
 If you did not create an account, then ignore this email.`;
   await sendEmail(to, subject, text);
 };
+
+// Function to send a welcome email
+const sendWelcomeEmail = async (userEmail, userName) => {
+  try {
+    if (!process.env.MJ_APIKEY_PUBLIC || !process.env.MJ_APIKEY_PRIVATE) {
+      return;
+    }
+    const mailjetClient = mailjet.apiConnect(process.env.MJ_APIKEY_PUBLIC, process.env.MJ_APIKEY_PRIVATE);
+
+    // Load the email template from file
+    const emailTemplatePath = path.join(__dirname, '../utils/EmailTemplates/welcome.html');
+    let emailTemplate = fs.readFileSync(emailTemplatePath, 'utf8');
+
+    // Replace <UserName> in the email template with the actual user's name
+    emailTemplate = emailTemplate.replace('<UserName>', userName);
+
+    // Prepare and send the email via Mailjet
+    const request = mailjetClient.post('send', { version: 'v3' });
+    const result = await request.request({
+      FromEmail: 'hello@sling.biz', // Replace with your sender email
+      FromName: 'Sling Team',
+      Recipients: [
+        {
+          Email: userEmail,
+          Name: userName,
+        },
+      ],
+      Subject: 'Welcome to Sling!',
+      'Text-part': `Hi ${userName}, welcome to Sling! We're excited to have you on board.`,
+      'Html-part': emailTemplate, // HTML email content
+    });
+
+    // Send a compy to Admin. T
+    // Todo: BCC issue to be fixed.
+    if (process.env.BCC_EMAIL) {
+      request.request({
+        FromEmail: 'hello@sling.biz', // Replace with your sender email
+        FromName: 'Sling Team',
+        Recipients: [
+          {
+            Email: process.env.BCC_EMAIL,
+            Name: userName,
+          },
+        ],
+        Subject: 'Welcome to Sling!',
+        'Text-part': `Hi ${userName}, welcome to Sling! We're excited to have you on board.`,
+        'Html-part': emailTemplate, // HTML email content
+      });
+    }
+
+    console.log('Email sent:', result.body);
+  } catch (err) {
+    console.error('Error sending email:', err.statusCode);
+  }
+};
+
 module.exports = {
   transport,
   sendEmail,
   sendResetPasswordEmail,
   sendVerificationEmail,
   sendVerificationEmailByToken,
+  sendWelcomeEmail,
 };

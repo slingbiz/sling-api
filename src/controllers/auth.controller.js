@@ -8,6 +8,13 @@ const ApiError = require('../utils/ApiError');
 const register = catchAsync(async (req, res) => {
   const user = await userService.createUser(req.body);
   const tokens = await tokenService.generateAuthTokens(user);
+
+  // Check if the name exists, otherwise extract it from the email
+  const userName = user.name ? user.name : user.email.split('@')[0];
+
+  // Send welcome email
+  await emailService.sendWelcomeEmail(user.email, userName);
+
   res.status(httpStatus.CREATED).send({ user, tokens });
 });
 
