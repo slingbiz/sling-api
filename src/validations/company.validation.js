@@ -4,15 +4,15 @@ const registration = {
   body: Joi.object().keys({
     user: Joi.string(),
     email: Joi.string().required().email(),
-    orgName: Joi.string().required(),
-    companyName: Joi.string().required(),
-    address1: Joi.string().required(),
-    address2: Joi.allow(null).optional(),
+    orgName: Joi.string().optional().allow(''), // Allow empty string for orgName
+    companyName: Joi.string().optional().allow(''),
+    address1: Joi.string().optional().allow(''),
+    address2: Joi.allow(null).optional().allow(''),
     wlIP: Joi.allow(null).optional(),
     phoneNumber: Joi.allow(null).required(),
-    city: Joi.string().required(),
+    city: Joi.allow(null).optional().allow(''),
     zipCode: Joi.allow(null),
-    country: Joi.string().required(),
+    country: Joi.allow(null).optional().allow(''),
     region: Joi.allow(null),
   }),
 };

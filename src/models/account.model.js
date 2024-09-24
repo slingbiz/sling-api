@@ -12,7 +12,7 @@ const acountSchema = mongoose.Schema(
     },
     orgName: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     storeName: {
@@ -53,7 +53,7 @@ const acountSchema = mongoose.Schema(
     },
     companyName: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     phoneNumber: {
@@ -63,7 +63,7 @@ const acountSchema = mongoose.Schema(
     },
     address1: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     address2: {
@@ -72,7 +72,7 @@ const acountSchema = mongoose.Schema(
     },
     city: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     zipCode: {
@@ -82,7 +82,7 @@ const acountSchema = mongoose.Schema(
     },
     country: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
     region: {
