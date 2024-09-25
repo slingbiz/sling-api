@@ -22,57 +22,41 @@ const createWidget = async (widgetBody, clientId) => {
 // };
 
 const getWidgets = async ({ page = 0, size = 50, query, clientId, type }) => {
-  // await sleep(5000);
   const db = getDb();
   const skip = page * size;
   const andArray = [];
+
+  // Add type filter if provided
   if (type) {
     andArray.push({ type });
   }
+
+  // Add query filter if provided
   if (query) {
     const cond = {
       $regex: query,
-      $options: 'i',
+      $options: 'i', // case-insensitive search
     };
     andArray.push({
-      $or: [
-        {
-          name: cond,
-        },
-        {
-          description: cond,
-        },
-        {
-          sku: cond,
-        },
-      ],
+      $or: [{ name: cond }, { description: cond }, { sku: cond }],
     });
   }
-  // Get all public
-  // const orArray = [{ ownership: 'public' }];
 
-  // Or private for the client
+  // Filter by private ownership and client_id
   andArray.push({ ownership: 'private', client_id: clientId });
 
-  // or protected and bought subscriptions;
-  // get all subscriptions
+  // Fetch widgets sorted by _id in descending order
+  const widgetsRes = await db
+    .collection('widgets')
+    .find({ $and: andArray })
+    .sort({ _id: -1 }) // Sort by _id descending
+    .skip(skip)
+    .limit(size)
+    .toArray();
 
-  // const subscriptionsRes = await db.collection('widget_subscriptions').find({ client_id: clientId }).toArray();
-  // const widgetsSubscribed = subscriptionsRes?.[0]?.subscriptions;
-  // if (widgetsSubscribed?.length) {
-  //   const oids = [];
-  //   widgetsSubscribed.forEach(function (item) {
-  //     oids.push(new ObjectID(item));
-  //   });
-  //   orArray.push({ ownership: 'protected', _id: { $in: oids } });
-  // }
-  // andArray.push({ $or: orArray });
+  // Get the total count of widgets
+  const totalRes = await db.collection('widgets').countDocuments({ $and: andArray });
 
-  // TODO: Cache this response.
-  // console.log(JSON.stringify(andArray), 'andArrayandArray');
-  // Get widgets and total count
-  const widgetsRes = await db.collection('widgets').find({ $and: andArray }).skip(skip).limit(size).toArray();
-  const totalRes = await db.collection('widgets').count({ $and: andArray });
   return { widgets: widgetsRes, tc: totalRes };
 };
 
