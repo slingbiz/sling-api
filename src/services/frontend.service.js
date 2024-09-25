@@ -1,6 +1,6 @@
+/* eslint-disable no-restricted-syntax */
 const httpStatus = require('http-status');
 const axios = require('axios');
-const UrlPattern = require('url-pattern');
 const ApiError = require('../utils/ApiError');
 const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
@@ -91,39 +91,51 @@ const removeTrailingSlash = (str) => {
   return str.replace(/\/$/, '');
 };
 
-// Utility function to convert URL string to regex pattern
-function convertToRegexPattern(urlString) {
-  return `^${urlString.replace(/<([^>]+)>/g, '([^/]+)').replace(/\//g, '\\/')}$`;
-}
+// // Utility function to convert URL string to regex pattern
+// function convertToRegexPattern(urlString) {
+//   return `^${urlString.replace(/<([^>]+)>/g, '([^/]+)').replace(/\//g, '\\/')}$`;
+// }
 
 const getMatchingRoute = async ({ asPath, query, clientId }) => {
   console.log(asPath, query, '--aspath--query', clientId);
   const db = getDb();
 
-  // TODO: Cache this response.
+  // Fetch all routes for the client
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   let routeRet = {};
+
+  // Helper function to clean the URL string and path
+  const cleanUrl = (url) => {
+    // Remove any leading or trailing spaces and slashes
+    return url.trim().replace(/^\/+|\/+$/g, '');
+  };
+
+  // Helper function to convert dynamic URL to regex
+  const convertToRegexPattern = (urlString) => {
+    // Replace dynamic segments like <city>, <l1Category>, <l2Category> with regex capturing groups
+    return urlString.replace(/<[^>]+>/g, '([^/]+)');
+  };
+
+  // Clean the asPath for comparison
+  const cleanedAsPath = `/${cleanUrl(asPath)}`;
 
   // Iterate over all routes and attempt to match the asPath
   for (const routeObj of allRoutes) {
     const { url_string: urlString, keys } = routeObj;
 
-    // Clean URL string
-    const cleanedUrlString = removeTrailingSlash(urlString);
+    // Clean the route URL
+    const cleanedUrlString = cleanUrl(urlString);
 
-    // Determine if the route is static or dynamic
+    // Determine if the route is dynamic based on the keys
     const isDynamic = keys && keys.length > 0;
 
-    // Create the appropriate pattern
+    // Generate the regex pattern for dynamic or static routes
     const regexPattern = isDynamic
-      ? new RegExp(convertToRegexPattern(cleanedUrlString))
+      ? new RegExp(`^/${convertToRegexPattern(cleanedUrlString)}$`)
       : new RegExp(`^/${cleanedUrlString}$`);
 
-    // Clean asPath
-    const cleanedAsPath = `/${removeTrailingSlash(asPath.replace(/^\//, ''))}`;
-
-    // Attempt to match the pattern
+    // Attempt to match the cleaned asPath with the regex pattern
     const matchRes = cleanedAsPath.match(regexPattern);
 
     // Debugging logs
@@ -136,8 +148,8 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     console.log('Keys:', keys);
     console.log('Match Keys Length:', matchRes ? matchRes.length - 1 : 0); // Subtract 1 to exclude the full match
 
-    // Check if matchRes is valid and matches the keys length
-    if (matchRes && matchRes.length - 1 === keys.length) {
+    // Check if matchRes is valid and matches the keys length or it's a static route
+    if (matchRes && (!isDynamic || matchRes.length - 1 === keys.length)) {
       routeRet = routeObj;
       break;
     }

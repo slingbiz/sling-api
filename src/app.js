@@ -1,5 +1,6 @@
 const express = require('express');
 const helmet = require('helmet');
+// const xss = require('xss-clean');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const cors = require('cors');
@@ -30,60 +31,41 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // sanitize request data
+// app.use(xss());
 app.use(mongoSanitize());
 
 // gzip compression
 app.use(compression());
 
-// CORS configuration
-const allowedOrigins = [
-  /^http:\/\/localhost(:\d+)?$/, // Allow all localhost with different ports
-  'http://api.sling.biz', // Allow your production server
-];
-
-// CORS middleware to handle preflight requests and allow specific origins
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin, such as mobile apps or curl requests
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.some((pattern) => pattern.test(origin))) {
-        return callback(null, true);
-      } else {
-        const msg = 'The CORS policy for this site does not allow access from the specified origin.';
-        return callback(new Error(msg), false);
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  })
-);
-
-// Handle preflight requests
+// enable cors
+app.use(cors());
 app.options('*', cors());
 
-// JWT authentication
+// jwt authentication
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
 
-// Limit repeated failed requests to auth endpoints
+// limit repeated failed requests to auth endpoints
 if (config.env === 'production') {
   app.use('/v1/auth', authLimiter);
 }
 
-// v1 API routes
+// middlewares
+// app.use(setClient);
+
+// v1 api routes
 app.use('/v1', routes);
 
-// Send back a 404 error for any unknown API request
+// send back a 404 error for any unknown api request
 app.use((req, res, next) => {
+  console.log(req.url, 'req url', req.type, 'req type');
   next(new ApiError(httpStatus.NOT_FOUND, 'Not found'));
 });
 
-// Convert error to ApiError, if needed
+// convert error to ApiError, if needed
 app.use(errorConverter);
 
-// Handle error
+// handle error
 app.use(errorHandler);
 
 module.exports = app;
