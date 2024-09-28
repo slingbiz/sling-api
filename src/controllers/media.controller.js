@@ -1,19 +1,26 @@
+/* eslint-disable no-console */
 const httpStatus = require('http-status');
 const { Storage } = require('@google-cloud/storage');
 const catchAsync = require('../utils/catchAsync');
 
 const mediaService = require('../services/media.service');
 
-// Initialize Google Cloud Storage with environment variables
-const storage = new Storage({
-  projectId: process.env.GCLOUD_PROJECT_ID,
-  credentials: {
-    client_email: process.env.GCLOUD_CLIENT_EMAIL,
-    private_key: process.env.GCLOUD_PRIVATE_KEY.replace(/\\n/g, '\n'), // Handle newlines in the private key
-  },
-});
+// Initialize Google Cloud Storage only if credentials are set
+let storage = null;
+let bucket = null;
 
-const bucket = storage.bucket('sling-studio');
+if (process.env.GCLOUD_PROJECT_ID && process.env.GCLOUD_CLIENT_EMAIL && process.env.GCLOUD_PRIVATE_KEY) {
+  storage = new Storage({
+    projectId: process.env.GCLOUD_PROJECT_ID,
+    credentials: {
+      client_email: process.env.GCLOUD_CLIENT_EMAIL,
+      private_key: process.env.GCLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'), // Handle newlines in the private key
+    },
+  });
+  bucket = storage.bucket('sling-studio');
+} else {
+  console.warn('Google Cloud credentials are not set, using local storage for file uploads.');
+}
 
 const ping = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send('pong');
@@ -43,6 +50,9 @@ const saveImage = catchAsync(async (req, res) => {
 
 const uploadImage = catchAsync(async (req, res) => {
   try {
+    if (!bucket) {
+      return res.status(500).send({ message: 'Google Cloud credentials are not set for uploading files to Storage.' });
+    }
     if (!req.file) {
       return res.status(400).send('No file uploaded.');
     }
