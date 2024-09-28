@@ -31,23 +31,11 @@ const getMedia = async ({ page = 0, size = 12, query, clientId, type }) => {
   // Or private for the client
   orArray.push({ ownership: 'private', client_id: clientId });
 
-  // or protected and bought subscriptions;
-  // get all subscriptions
-  // const subscriptionsRes = await db.collection('media_subscriptions').find({ client_id: clientId }).toArray();
-  // const mediaSubscribed = subscriptionsRes?.[0]?.subscriptions;
-  // if (mediaSubscribed?.length) {
-  //   const oids = [];
-  //   mediaSubscribed.forEach(function (item) {
-  //     oids.push(new ObjectID(item));
-  //   });
-  //   orArray.push({ ownership: 'protected', _id: { $in: oids } });
-  // }
   andArray.push({ $or: orArray });
 
   // TODO: Cache this response.
   // Get media and total count
-  console.log(JSON.stringify(andArray), 'andArray', clientId);
-  const mediaRes = await db.collection('media').find({ $and: andArray }).skip(skip).limit(size).toArray();
+  const mediaRes = await db.collection('media').find({ $and: andArray }).sort({ _id: -1 }).skip(skip).limit(size).toArray();
   const totalRes = await db.collection('media').count({ $and: andArray });
   return { media: mediaRes, tc: totalRes };
 };
@@ -80,22 +68,10 @@ const getMediaConstants = async ({ page = 0, size = 12, query, clientId, type })
   // Or private for the client
   orArray.push({ ownership: 'private', client_id: clientId });
 
-  // or protected and bought subscriptions;
-  // get all subscriptions
-  // const subscriptionsRes = await db.collection('media_subscriptions').find({ client_id: clientId }).toArray();
-  // const mediaSubscribed = subscriptionsRes?.[0]?.subscriptions;
-  // if (mediaSubscribed?.length) {
-  //   const oids = [];
-  //   mediaSubscribed.forEach(function (item) {
-  //     oids.push(new ObjectID(item));
-  //   });
-  //   orArray.push({ ownership: 'protected', _id: { $in: oids } });
-  // }
   andArray.push({ $or: orArray });
 
   // TODO: Cache this response.
   // Get media and total count
-  console.log(JSON.stringify(andArray), 'andArray - media_constants', clientId);
   const mediaRes = await db.collection('media_constants').find({ $and: andArray }).skip(skip).limit(size).toArray();
 
   const imageUrls = {};
@@ -122,7 +98,30 @@ const getMediaConstants = async ({ page = 0, size = 12, query, clientId, type })
   return { media_constants: mediaRes, tc: totalRes, image_urls: imageUrls };
 };
 
+// save image to google cdn, and save the image url to the db with the client id
+const saveImage = async (data, clientId) => {
+  const db = getDb();
+  // Save image_url, imgKey, name, altText
+  const { name, altText, imgKey, image_url: imageUrl } = data;
+
+  // Save the image to the db
+  const image = {
+    title: name,
+    type: 'image',
+    ownership: 'private',
+    alt_text: altText,
+    key: imgKey,
+    url: imageUrl,
+    added_on: new Date(),
+    updated_on: new Date(),
+    client_id: clientId,
+  };
+  const res = await db.collection('media').insertOne(image);
+  return res;
+};
+
 module.exports = {
   getMedia,
   getMediaConstants,
+  saveImage,
 };
