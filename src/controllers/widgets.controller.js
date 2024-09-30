@@ -28,10 +28,17 @@ const updateWidgetByKey = catchAsync(async (req, res) => {
   const widgets = await widgetsService.updateWidgetByKey(req.body.key, req.body.widget, req.clientId);
   res.status(httpStatus.CREATED).send(widgets);
 });
+
+const deleteWidget = catchAsync(async (req, res) => {
+  const widgets = await widgetsService.deleteWidget(req.body.id, req.clientId);
+  res.status(httpStatus.CREATED).send(widgets);
+});
+
 module.exports = {
   ping,
   getWidgets,
   createWidget,
   updateWidget,
   updateWidgetByKey,
+  deleteWidget,
 };

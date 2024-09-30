@@ -10,5 +10,6 @@ router.put('/', auth(), widgetsController.updateWidget);
 // router.get('/', setClient, widgetsController.getWidgets);
 router.route('/dash/getWidgets').post(auth(), widgetsController.getWidgets);
 router.route('/getWidgets').post(auth(), widgetsController.getWidgets);
+router.route('/deleteWidget').post(auth(), widgetsController.deleteWidget);
 
 module.exports = router;

@@ -99,9 +99,24 @@ const updateWidgetByKey = async (key, widgetBody, clientId) => {
   return widget;
 };
 
+const deleteWidget = async (id, clientId) => {
+  const widget = await Widget.findByIdAndDelete(id);
+  if (!widget) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Widget with id ${id} not found`);
+  }
+  try {
+    const widgets = await getWidgets({ type: widget.type, clientId });
+    return widgets;
+  } catch (error) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
+  }
+};
+
+
 module.exports = {
   getWidgets,
   createWidget,
   updateWidget,
   updateWidgetByKey,
+  deleteWidget,
 };
