@@ -9,8 +9,8 @@ const ApiError = require('../utils/ApiError');
  */
 const createUser = async (userBody) => {
   // Check for links in any field of userBody
-  const containsLink = Object.values(userBody).some((value) => {
-    if (typeof value === 'string') {
+  const containsLink = Object.entries(userBody).some(([key, value]) => {
+    if (typeof value === 'string' && key !== 'password' && key !== 'email') {
       // Regular expression to detect various URL formats
       const urlRegex = /(http:\/\/|https:\/\/|www\.)[^\s]+|[^\s]+\.(com|net|org|edu|gov|mil|io|co|uk|de|ru|info|biz|online|xyz)[^\s]*/gi;
       return urlRegex.test(value);
