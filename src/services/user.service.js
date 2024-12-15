@@ -8,9 +8,24 @@ const ApiError = require('../utils/ApiError');
  * @returns {Promise<User>}
  */
 const createUser = async (userBody) => {
+  // Check for links in any field of userBody
+  const containsLink = Object.values(userBody).some((value) => {
+    if (typeof value === 'string') {
+      // Regular expression to detect various URL formats
+      const urlRegex = /(http:\/\/|https:\/\/|www\.)[^\s]+|[^\s]+\.(com|net|org|edu|gov|mil|io|co|uk|de|ru|info|biz|online|xyz)[^\s]*/gi;
+      return urlRegex.test(value);
+    }
+    return false;
+  });
+
+  if (containsLink) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Links are not allowed in user fields');
+  }
+
   if (await User.isEmailTaken(userBody.email)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
   }
+
   const user = await User.create(userBody);
   return user;
 };
