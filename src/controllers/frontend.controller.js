@@ -18,7 +18,7 @@ const getInitProps = catchAsync(async (req, res) => {
   const { pathname, query, asPath } = req.body;
   const { clientId } = req;
   if (!GLOBAL_SLING_HANDLER.includes(pathname)) {
-    console.log('[getInitProps] Not a part of global sling handler. - ', asPath);
+    console.info('[getInitProps] Not a part of global sling handler. - ', asPath);
     res
       .status(httpStatus.OK)
       .send({ initConfig: initConfigData, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
