@@ -75,7 +75,7 @@ const deletePageTemplate = async ({ pageKey }, clientId = 'demo-id') => {
 };
 
 const getSSRApiRes = async ({ pathname, clientId }) => {
-  if (pathname !== GLOBAL_SLING_HANDLER) {
+  if (!GLOBAL_SLING_HANDLER.includes(pathname)) {
     return {};
   }
   const db = getDb();

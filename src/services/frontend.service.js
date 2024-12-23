@@ -44,7 +44,7 @@ const setInitConfig = async (reqBody) => {
 };
 
 const getSSRApiRes = async ({ pathname, clientId }) => {
-  if (pathname !== GLOBAL_SLING_HANDLER) {
+  if (!GLOBAL_SLING_HANDLER.includes(pathname)) {
     return {};
   }
   const db = getDb();
@@ -97,7 +97,8 @@ const removeTrailingSlash = (str) => {
 // }
 
 const getMatchingRoute = async ({ asPath, query, clientId }) => {
-  console.log(asPath, query, '--aspath--query', clientId);
+  // TODO: Do not process for url of types /_next/static
+
   const db = getDb();
 
   // Fetch all routes for the client

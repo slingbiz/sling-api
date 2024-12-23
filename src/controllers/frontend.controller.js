@@ -17,8 +17,7 @@ const ping = catchAsync(async (req, res) => {
 const getInitProps = catchAsync(async (req, res) => {
   const { pathname, query, asPath } = req.body;
   const { clientId } = req;
-  console.log(clientId, '[getInitProps] ClientID');
-  if (pathname !== GLOBAL_SLING_HANDLER) {
+  if (!GLOBAL_SLING_HANDLER.includes(pathname)) {
     console.log('[getInitProps] Not a part of global sling handler. - ', asPath);
     res
       .status(httpStatus.OK)
