@@ -51,6 +51,9 @@
   ],
   "dependencies": {
     "@google-cloud/storage": "^7.13.0",
+    "@sentry/node": "^8.47.0",
+    "@sentry/profiling-node": "^8.47.0",
+    "@vercel/analytics": "^1.4.1",
     "axios": "^0.21.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",

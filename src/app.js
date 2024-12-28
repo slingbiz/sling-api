@@ -1,3 +1,6 @@
+require('./instrument.js');
+const Sentry = require('@sentry/node');
+
 const express = require('express');
 const helmet = require('helmet');
 // const xss = require('xss-clean');
@@ -15,6 +18,8 @@ const { errorConverter, errorHandler } = require('./middlewares/error');
 const ApiError = require('./utils/ApiError');
 
 const app = express();
+// The error handler must be registered before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
 
 if (config.env !== 'test') {
   app.use(morgan.successHandler);
