@@ -67,10 +67,10 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
     responseKeyMapper[k] = uniqueIdFe;
     apiRetResponse[uniqueIdFe] = { ...apiRetResponse[uniqueIdFe], sling_mapping: slingMapping };
     if (type === 'GET') {
-      axiosPromiseArr.push(axios.get(url));
+      axiosPromiseArr.push(axios.get(url, { cache: { maxAge: 3600000 } }));
     }
     if (type === 'POST') {
-      axiosPromiseArr.push(axios.post(url, body));
+      axiosPromiseArr.push(axios.post(url, body, { cache: { maxAge: 3600000 } }));
     }
   });
 
