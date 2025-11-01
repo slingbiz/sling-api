@@ -3,6 +3,53 @@
  * Replaces dependency on external fakestoreapi.com
  */
 
+// Free image service: Picsum Photos (reliable placeholder images)
+// Using specific image IDs for consistency and category-appropriate images
+const PRODUCT_IMAGES = {
+  "men's clothing": [
+    'https://picsum.photos/id/1018/400/400', // Nature/outdoor gear
+    'https://picsum.photos/id/1043/400/400', // Clothing/apparel
+    'https://picsum.photos/id/1025/400/400', // Fashion
+    'https://picsum.photos/id/1039/400/400', // Lifestyle
+  ],
+  "women's clothing": [
+    'https://picsum.photos/id/1020/400/400', // Fashion
+    'https://picsum.photos/id/1021/400/400', // Clothing
+    'https://picsum.photos/id/1035/400/400', // Style
+    'https://picsum.photos/id/1044/400/400', // Apparel
+    'https://picsum.photos/id/1050/400/400', // Fashion
+    'https://picsum.photos/id/1055/400/400', // Style
+  ],
+  electronics: [
+    'https://picsum.photos/id/1/400/400', // Tech
+    'https://picsum.photos/id/2/400/400', // Electronics
+    'https://picsum.photos/id/3/400/400', // Gadgets
+    'https://picsum.photos/id/4/400/400', // Devices
+    'https://picsum.photos/id/5/400/400', // Technology
+    'https://picsum.photos/id/6/400/400', // Hardware
+  ],
+  jewelery: [
+    'https://picsum.photos/id/100/400/400', // Jewelry/luxury
+    'https://picsum.photos/id/101/400/400', // Accessories
+    'https://picsum.photos/id/102/400/400', // Fine jewelry
+    'https://picsum.photos/id/103/400/400', // Gems
+  ],
+};
+
+// Fallback to placeholder.com if Picsum fails (very reliable free service)
+const getFallbackImage = (category) => {
+  // Use placeholder.com which generates images with text
+  const categoryMap = {
+    "men's clothing": 'mens-clothing',
+    "women's clothing": 'womens-clothing',
+    electronics: 'electronics',
+    jewelery: 'jewelry',
+  };
+  const categoryText = categoryMap[category] || 'product';
+  // Placeholder.com - very reliable free service
+  return `https://via.placeholder.com/400/CCCCCC/666666?text=${encodeURIComponent(categoryText)}`;
+};
+
 const generateMockProducts = () => {
   const menClothing = [
     {
@@ -138,63 +185,73 @@ const generateMockProducts = () => {
   const products = [];
   let id = 1;
 
+  // Helper function to get image URL for a product
+  const getImageUrl = (category, index) => {
+    const categoryImages = PRODUCT_IMAGES[category] || [];
+    // Use actual image URL if available, otherwise fallback to Unsplash
+    return categoryImages[index % categoryImages.length] || getFallbackImage(category, index);
+  };
+
   // Generate men's clothing products
-  menClothing.forEach((product) => {
+  menClothing.forEach((product, index) => {
     products.push({
-      id: id++,
+      id: id + index,
       title: product.title,
       price: product.price,
       description: product.description,
       category: "men's clothing",
-      image: `https://fakestoreapi.com/img/71-${Math.floor(Math.random() * 100)}.jpg`,
+      image: getImageUrl("men's clothing", index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
       },
     });
   });
+  id += menClothing.length;
 
   // Generate women's clothing products
-  womenClothing.forEach((product) => {
+  womenClothing.forEach((product, index) => {
     products.push({
-      id: id++,
+      id: id + index,
       title: product.title,
       price: product.price,
       description: product.description,
       category: "women's clothing",
-      image: `https://fakestoreapi.com/img/51-${Math.floor(Math.random() * 100)}.jpg`,
+      image: getImageUrl("women's clothing", index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
       },
     });
   });
+  id += womenClothing.length;
 
   // Generate electronics products
-  electronics.forEach((product) => {
+  electronics.forEach((product, index) => {
     products.push({
-      id: id++,
+      id: id + index,
       title: product.title,
       price: product.price,
       description: product.description,
       category: 'electronics',
-      image: `https://fakestoreapi.com/img/61-${Math.floor(Math.random() * 100)}.jpg`,
+      image: getImageUrl('electronics', index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
       },
     });
   });
+  id += electronics.length;
 
   // Generate jewelry products
-  jewelery.forEach((product) => {
+  jewelery.forEach((product, index) => {
     products.push({
-      id: id++,
+      id: id + index,
       title: product.title,
       price: product.price,
       description: product.description,
       category: 'jewelery',
-      image: `https://fakestoreapi.com/img/61-${Math.floor(Math.random() * 100)}.jpg`,
+      image: getImageUrl('jewelery', index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
