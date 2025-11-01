@@ -135,12 +135,12 @@ const generateMockProducts = () => {
     },
   ];
 
-  // Helper function to generate product-specific placeholder image with title and price
-  // This ensures images always match the product because they display the product name
+  // Helper function to generate product-specific SVG image with title and price
+  // Uses embedded SVG data URI - no external service dependency, always works!
   const getImageUrl = (title, category, price) => {
-    // Create a short product name for the image text (max 25 chars for readability)
+    // Create a short product name for the image text (max 20 chars for readability)
     let imageText = title;
-    if (imageText.length > 25) {
+    if (imageText.length > 20) {
       // Use first few words + price
       const words = imageText.split(' ');
       imageText = `${words.slice(0, 3).join(' ')} $${price}`;
@@ -150,16 +150,28 @@ const generateMockProducts = () => {
 
     // Color scheme based on category
     const categoryColors = {
-      "men's clothing": { bg: '4A90E2', text: 'FFFFFF' }, // Blue
-      "women's clothing": { bg: 'E91E63', text: 'FFFFFF' }, // Pink
-      electronics: { bg: '607D8B', text: 'FFFFFF' }, // Blue Grey
-      jewelery: { bg: 'FFD700', text: '000000' }, // Gold
+      "men's clothing": { bg: '#4A90E2', text: '#FFFFFF' }, // Blue
+      "women's clothing": { bg: '#E91E63', text: '#FFFFFF' }, // Pink
+      electronics: { bg: '#607D8B', text: '#FFFFFF' }, // Blue Grey
+      jewelery: { bg: '#FFD700', text: '#000000' }, // Gold
     };
 
-    const colors = categoryColors[category] || { bg: 'CCCCCC', text: '666666' };
+    const colors = categoryColors[category] || { bg: '#CCCCCC', text: '#666666' };
 
-    // Use placeholder.com with product name and price - always matches!
-    return `https://via.placeholder.com/400/${colors.bg}/${colors.text}?text=${encodeURIComponent(imageText)}`;
+    // Escape text for SVG
+    const escapedText = imageText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Create embedded SVG with product name and price - always matches and always works!
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="${colors.bg}"/>
+  <text x="200" y="200" font-family="Arial, sans-serif" font-size="18" font-weight="bold"
+        text-anchor="middle" dominant-baseline="middle" fill="${colors.text}">
+    ${escapedText}
+  </text>
+</svg>`;
+
+    // Return as data URI - no external service needed!
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   };
 
   const products = [];
