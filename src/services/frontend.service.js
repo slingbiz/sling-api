@@ -5,6 +5,7 @@ const ApiError = require('../utils/ApiError');
 const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
 const logger = require('../config/logger');
+const { generateMockProducts } = require('./mockProducts.service');
 
 /**
  * Returns initial config to create the page layout.
@@ -67,72 +68,151 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
       return {}; // No SSR APIs configured, return empty object
     }
 
-    const axiosPromiseArr = [];
     const apiRetResponse = {};
-    const responseKeyMapper = {};
 
-    // Pass headers from api_meta configuration to axios requests
-    ssrApis.forEach((v, k) => {
-      const { url, type, body, unique_id_fe: uniqueIdFe, sling_mapping: slingMapping, headers } = v;
-      responseKeyMapper[k] = uniqueIdFe;
-      apiRetResponse[uniqueIdFe] = { ...apiRetResponse[uniqueIdFe], sling_mapping: slingMapping };
+    // First, check all caches in parallel
+    const cacheChecks = ssrApis.map(async (v) => {
+      const { url, type, body, unique_id_fe: uniqueIdFe } = v;
+      const cacheKey = `${clientId}_${url}_${type}_${JSON.stringify(body || {})}`;
+      const cached = await db.collection('api_cache').findOne({ cache_key: cacheKey });
+      return { v, uniqueIdFe, cacheKey, cached };
+    });
 
-      // Prepare axios config with headers from api_meta
-      const axiosConfig = {
-        headers: headers || {},
-        timeout: 10000, // 10 second timeout
-      };
+    const cacheResults = await Promise.all(cacheChecks);
 
-      if (type === 'GET') {
-        axiosPromiseArr.push(
-          axios.get(url, axiosConfig).catch((err) => {
-            // Log error but don't crash - return error info instead
-            logger.error(`[getSSRApiRes] Failed to fetch SSR API (GET ${url}): ${err.message}`);
-            return {
-              data: null,
-              error: err.message,
-              status: err.response?.status || err.code,
-              url,
-            };
-          })
-        );
+    // Separate cached APIs from ones that need fetching
+    const fetchPromises = [];
+    cacheResults.forEach(({ v, uniqueIdFe, cacheKey, cached }) => {
+      const { url, type, body, sling_mapping: slingMapping, headers } = v;
+      apiRetResponse[uniqueIdFe] = { sling_mapping: slingMapping };
+
+      if (cached && cached.cached_response) {
+        // Return cached data immediately
+        logger.info(`[getSSRApiRes] Using cached response for ${uniqueIdFe} (${url})`);
+        apiRetResponse[uniqueIdFe].data = cached.cached_response;
+        apiRetResponse[uniqueIdFe].cached = true;
+        return; // Skip fetching, use cache
       }
-      if (type === 'POST') {
-        axiosPromiseArr.push(
-          axios.post(url, body || {}, axiosConfig).catch((err) => {
-            // Log error but don't crash - return error info instead
-            logger.error(`[getSSRApiRes] Failed to fetch SSR API (POST ${url}): ${err.message}`);
+
+      // Check if this is fakestoreapi.com - use AI-generated mock data instead
+      const isFakeStoreApi = url && url.includes('fakestoreapi.com');
+
+      if (isFakeStoreApi) {
+        // Generate mock products data instead of calling external API
+        logger.info(`[getSSRApiRes] Generating mock products for ${uniqueIdFe} instead of calling ${url}`);
+        const mockData = generateMockProducts();
+
+        // Cache the mock data and return promise
+        const mockPromise = (async () => {
+          try {
+            await db.collection('api_cache').updateOne(
+              { cache_key: cacheKey },
+              {
+                $set: {
+                  cache_key: cacheKey,
+                  client_id: clientId,
+                  api_url: url,
+                  unique_id_fe: uniqueIdFe,
+                  cached_response: mockData,
+                  cached_at: new Date(),
+                  updated_at: new Date(),
+                },
+              },
+              { upsert: true }
+            );
+            logger.info(`[getSSRApiRes] Cached mock products for ${uniqueIdFe}`);
+          } catch (cacheError) {
+            logger.error(`[getSSRApiRes] Failed to cache mock products for ${uniqueIdFe}: ${cacheError.message}`);
+          }
+          return { data: mockData, uniqueIdFe, success: true, cached: false };
+        })();
+
+        // Return mock data immediately (wrapped in promise)
+        fetchPromises.push({ promise: mockPromise, uniqueIdFe });
+      } else {
+        // For other APIs, fetch from external source
+        const axiosConfig = {
+          headers: headers || {},
+          timeout: 10000, // 10 second timeout
+        };
+
+        const fetchPromise = (type === 'GET' ? axios.get(url, axiosConfig) : axios.post(url, body || {}, axiosConfig))
+          .then(async (response) => {
+            // Success - cache the response for future use
+            const { data } = response;
+            try {
+              await db.collection('api_cache').updateOne(
+                { cache_key: cacheKey },
+                {
+                  $set: {
+                    cache_key: cacheKey,
+                    client_id: clientId,
+                    api_url: url,
+                    unique_id_fe: uniqueIdFe,
+                    cached_response: data,
+                    cached_at: new Date(),
+                    updated_at: new Date(),
+                  },
+                },
+                { upsert: true }
+              );
+              logger.info(`[getSSRApiRes] Cached response for ${uniqueIdFe} (${url})`);
+            } catch (cacheError) {
+              logger.error(`[getSSRApiRes] Failed to cache response for ${uniqueIdFe}: ${cacheError.message}`);
+            }
+            return { data, uniqueIdFe, success: true };
+          })
+          .catch(async (err) => {
+            // API failed - check if we have old cached data as fallback
+            logger.error(`[getSSRApiRes] Failed to fetch SSR API (${type} ${url}): ${err.message}`);
+
+            // Re-check cache in case it was updated
+            const fallbackCache = await db.collection('api_cache').findOne({ cache_key: cacheKey });
+
+            if (fallbackCache && fallbackCache.cached_response) {
+              // Return old cached data as fallback
+              logger.info(`[getSSRApiRes] API failed, using old cached response for ${uniqueIdFe} (${url})`);
+              return { data: fallbackCache.cached_response, uniqueIdFe, cached: true, success: true };
+            }
+
+            // No cache available, return error
             return {
               data: null,
               error: err.message,
               status: err.response?.status || err.code,
               url,
+              uniqueIdFe,
+              success: false,
             };
-          })
-        );
+          });
+
+        fetchPromises.push({ promise: fetchPromise, uniqueIdFe });
       }
     });
 
-    const axiosRes = await Promise.all(axiosPromiseArr);
+    // Wait for all API calls to complete
+    const apiResults = await Promise.all(fetchPromises.map((fp) => fp.promise));
 
-    // Process responses, handling errors gracefully
-    axiosRes.forEach((apiResponse, k) => {
-      const uniqueIdFe = responseKeyMapper[k];
-      if (apiResponse.error) {
-        // If API failed, still add it to response with error info
-        // Frontend can handle this and show fallback UI
+    // Process responses
+    apiResults.forEach((apiResponse) => {
+      const { uniqueIdFe, success, data, error, status, url: errorUrl, cached } = apiResponse;
+
+      if (!success) {
+        // API failed and no cache - return error info
         apiRetResponse[uniqueIdFe] = {
           ...apiRetResponse[uniqueIdFe],
-          error: apiResponse.error,
-          status: apiResponse.status,
-          url: apiResponse.url,
+          error,
+          status,
+          url: errorUrl,
           data: null,
         };
       } else {
-        // Success - add data to response
-        const { data } = apiResponse;
-        const currRetApiRes = apiRetResponse[uniqueIdFe];
-        apiRetResponse[uniqueIdFe] = { ...currRetApiRes, data };
+        // Success or cached fallback - add data to response
+        apiRetResponse[uniqueIdFe] = {
+          ...apiRetResponse[uniqueIdFe],
+          data,
+          cached: cached || false,
+        };
       }
     });
 
