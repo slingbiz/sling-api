@@ -243,10 +243,6 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
 
 const getRouteConstants = () => {};
 
-const removeTrailingSlash = (str) => {
-  return str.replace(/\/$/, '');
-};
-
 // // Utility function to convert URL string to regex pattern
 // function convertToRegexPattern(urlString) {
 //   return `^${urlString.replace(/<([^>]+)>/g, '([^/]+)').replace(/\//g, '\\/')}$`;
@@ -276,6 +272,10 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   // Clean the asPath for comparison
   const cleanedAsPath = `/${cleanUrl(asPath)}`;
 
+  // Special handling for root path "/"
+  // When asPath is "/", cleanedAsPath becomes "/" (empty string + "/")
+  const isRootPath = cleanedAsPath === '/';
+
   // Iterate over all routes and attempt to match the asPath
   for (const routeObj of allRoutes) {
     const { url_string: urlString, keys = [] } = routeObj;
@@ -283,42 +283,59 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     // Clean the route URL
     const cleanedUrlString = cleanUrl(urlString);
 
-    // Determine if the route is dynamic based on the keys
-    const isDynamic = keys.length > 0;
+    // Special case: handle root path "/" explicitly
+    if (isRootPath) {
+      // Check if this route is for root path "/"
+      if (urlString === '/' || cleanedUrlString === '') {
+        logger.info(`[getMatchingRoute] Found root path route: ${urlString}`);
+        routeRet = routeObj;
+        break;
+      }
+      // If looking for root path and this isn't it, skip to next route
+    } else {
+      // Determine if the route is dynamic based on the keys
+      const isDynamic = keys.length > 0;
 
-    // Generate the regex pattern for dynamic or static routes
-    const regexPattern = isDynamic
-      ? new RegExp(`^/${convertToRegexPattern(cleanedUrlString)}$`)
-      : new RegExp(`^/${cleanedUrlString}$`);
-
-    console.log('Converting URL to Regex:', urlString, ' -> ', regexPattern);
-
-    // Attempt to match the cleaned asPath with the regex pattern
-    const matchRes = cleanedAsPath.match(regexPattern);
-
-    // Debugging logs
-    console.log('Route Object:', routeObj);
-    console.log('Original urlString:', urlString);
-    console.log('Cleaned urlString:', cleanedUrlString);
-    console.log('Regex Pattern:', regexPattern);
-    console.log('Cleaned asPath:', cleanedAsPath);
-    console.log('Match Result:', matchRes);
-    console.log('Keys:', keys);
-    console.log('Match Keys Length:', matchRes ? matchRes.length - 1 : 0);
-
-    // Check if matchRes is valid and matches the keys length or it's a static route
-    if (matchRes && (!isDynamic || matchRes.length - 1 === keys.length)) {
-      // Map dynamic params from the URL into the route object
+      // Generate the regex pattern for dynamic or static routes
+      // Handle empty cleanedUrlString (root path) specially
+      let regexPattern;
       if (isDynamic) {
-        const params = {};
-        keys.forEach((key, index) => {
-          params[key] = matchRes[index + 1]; // Map dynamic params from the regex match
-        });
-        routeObj.params = params; // Add the dynamic params to the route object
+        regexPattern = new RegExp(`^/${convertToRegexPattern(cleanedUrlString)}$`);
+      } else if (cleanedUrlString === '') {
+        regexPattern = /^\/$/;
+      } else {
+        regexPattern = new RegExp(`^/${cleanedUrlString}$`);
       }
 
-      routeRet = routeObj;
-      break;
+      logger.info('Converting URL to Regex:', urlString, ' -> ', regexPattern);
+
+      // Attempt to match the cleaned asPath with the regex pattern
+      const matchRes = cleanedAsPath.match(regexPattern);
+
+      // Debugging logs
+      logger.info('Route Object:', routeObj);
+      logger.info('Original urlString:', urlString);
+      logger.info('Cleaned urlString:', cleanedUrlString);
+      logger.info('Regex Pattern:', regexPattern);
+      logger.info('Cleaned asPath:', cleanedAsPath);
+      logger.info('Match Result:', matchRes);
+      logger.info('Keys:', keys);
+      logger.info('Match Keys Length:', matchRes ? matchRes.length - 1 : 0);
+
+      // Check if matchRes is valid and matches the keys length or it's a static route
+      if (matchRes && (!isDynamic || matchRes.length - 1 === keys.length)) {
+        // Map dynamic params from the URL into the route object
+        if (isDynamic) {
+          const params = {};
+          keys.forEach((key, index) => {
+            params[key] = matchRes[index + 1]; // Map dynamic params from the regex match
+          });
+          routeObj.params = params; // Add the dynamic params to the route object
+        }
+
+        routeRet = routeObj;
+        break;
+      }
     }
   }
 
