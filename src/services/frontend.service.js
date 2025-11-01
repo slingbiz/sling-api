@@ -4,6 +4,7 @@ const axios = require('axios');
 const ApiError = require('../utils/ApiError');
 const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
+const logger = require('../config/logger');
 
 /**
  * Returns initial config to create the page layout.
@@ -49,40 +50,98 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
   }
   const db = getDb();
 
-  // Find api list based on route page template
-  const ssrApis = await db
-    .collection('api_meta')
-    .find({ client_id: clientId, ssr: true })
-    .project({ url: 1, type: 1, headers: 1, params: 1, body: 1, unique_id_fe: 1, sling_mapping: 1 })
-    .toArray();
-  // console.log(ssrApis, '@ssrapis');
+  if (!db) {
+    logger.error('[getSSRApiRes] Database connection not available');
+    return {}; // Return empty object so frontend can still render
+  }
 
-  const axiosPromiseArr = [];
-  const apiRetResponse = {};
-  const responseKeyMapper = {};
+  try {
+    // Find api list based on route page template
+    const ssrApis = await db
+      .collection('api_meta')
+      .find({ client_id: clientId, ssr: true })
+      .project({ url: 1, type: 1, headers: 1, params: 1, body: 1, unique_id_fe: 1, sling_mapping: 1 })
+      .toArray();
 
-  // Todo: Pass headers, and request body from params;
-  ssrApis.forEach((v, k) => {
-    const { url, type, body, unique_id_fe: uniqueIdFe, sling_mapping: slingMapping } = v;
-    responseKeyMapper[k] = uniqueIdFe;
-    apiRetResponse[uniqueIdFe] = { ...apiRetResponse[uniqueIdFe], sling_mapping: slingMapping };
-    if (type === 'GET') {
-      axiosPromiseArr.push(axios.get(url, { cache: { maxAge: 3600000 } }));
+    if (!ssrApis || ssrApis.length === 0) {
+      return {}; // No SSR APIs configured, return empty object
     }
-    if (type === 'POST') {
-      axiosPromiseArr.push(axios.post(url, body, { cache: { maxAge: 3600000 } }));
-    }
-  });
 
-  const axiosRes = await Promise.all(axiosPromiseArr);
+    const axiosPromiseArr = [];
+    const apiRetResponse = {};
+    const responseKeyMapper = {};
 
-  axiosRes.forEach((apiResponse, k) => {
-    const { data } = apiResponse;
-    const currRetApiRes = apiRetResponse[responseKeyMapper[k]];
-    apiRetResponse[responseKeyMapper[k]] = { ...currRetApiRes, data };
-  });
+    // Pass headers from api_meta configuration to axios requests
+    ssrApis.forEach((v, k) => {
+      const { url, type, body, unique_id_fe: uniqueIdFe, sling_mapping: slingMapping, headers } = v;
+      responseKeyMapper[k] = uniqueIdFe;
+      apiRetResponse[uniqueIdFe] = { ...apiRetResponse[uniqueIdFe], sling_mapping: slingMapping };
 
-  return apiRetResponse;
+      // Prepare axios config with headers from api_meta
+      const axiosConfig = {
+        headers: headers || {},
+        timeout: 10000, // 10 second timeout
+      };
+
+      if (type === 'GET') {
+        axiosPromiseArr.push(
+          axios.get(url, axiosConfig).catch((err) => {
+            // Log error but don't crash - return error info instead
+            logger.error(`[getSSRApiRes] Failed to fetch SSR API (GET ${url}): ${err.message}`);
+            return {
+              data: null,
+              error: err.message,
+              status: err.response?.status || err.code,
+              url,
+            };
+          })
+        );
+      }
+      if (type === 'POST') {
+        axiosPromiseArr.push(
+          axios.post(url, body || {}, axiosConfig).catch((err) => {
+            // Log error but don't crash - return error info instead
+            logger.error(`[getSSRApiRes] Failed to fetch SSR API (POST ${url}): ${err.message}`);
+            return {
+              data: null,
+              error: err.message,
+              status: err.response?.status || err.code,
+              url,
+            };
+          })
+        );
+      }
+    });
+
+    const axiosRes = await Promise.all(axiosPromiseArr);
+
+    // Process responses, handling errors gracefully
+    axiosRes.forEach((apiResponse, k) => {
+      const uniqueIdFe = responseKeyMapper[k];
+      if (apiResponse.error) {
+        // If API failed, still add it to response with error info
+        // Frontend can handle this and show fallback UI
+        apiRetResponse[uniqueIdFe] = {
+          ...apiRetResponse[uniqueIdFe],
+          error: apiResponse.error,
+          status: apiResponse.status,
+          url: apiResponse.url,
+          data: null,
+        };
+      } else {
+        // Success - add data to response
+        const { data } = apiResponse;
+        const currRetApiRes = apiRetResponse[uniqueIdFe];
+        apiRetResponse[uniqueIdFe] = { ...currRetApiRes, data };
+      }
+    });
+
+    return apiRetResponse;
+  } catch (error) {
+    // Log error but return empty object so frontend can still render
+    logger.error(`[getSSRApiRes] Error fetching SSR APIs for client ${clientId}: ${error.message}`, error);
+    return {}; // Return empty object so frontend can show something
+  }
 };
 
 const getRouteConstants = () => {};
