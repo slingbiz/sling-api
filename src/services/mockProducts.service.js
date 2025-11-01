@@ -3,6 +3,53 @@
  * Replaces dependency on external fakestoreapi.com
  */
 
+// Free image service: Picsum Photos (reliable placeholder images)
+// Using specific image IDs for consistency and category-appropriate images
+const PRODUCT_IMAGES = {
+  "men's clothing": [
+    'https://picsum.photos/id/1018/400/400', // Nature/outdoor gear
+    'https://picsum.photos/id/1043/400/400', // Clothing/apparel
+    'https://picsum.photos/id/1025/400/400', // Fashion
+    'https://picsum.photos/id/1039/400/400', // Lifestyle
+  ],
+  "women's clothing": [
+    'https://picsum.photos/id/1020/400/400', // Fashion
+    'https://picsum.photos/id/1021/400/400', // Clothing
+    'https://picsum.photos/id/1035/400/400', // Style
+    'https://picsum.photos/id/1044/400/400', // Apparel
+    'https://picsum.photos/id/1050/400/400', // Fashion
+    'https://picsum.photos/id/1055/400/400', // Style
+  ],
+  electronics: [
+    'https://picsum.photos/id/1/400/400', // Tech
+    'https://picsum.photos/id/2/400/400', // Electronics
+    'https://picsum.photos/id/3/400/400', // Gadgets
+    'https://picsum.photos/id/4/400/400', // Devices
+    'https://picsum.photos/id/5/400/400', // Technology
+    'https://picsum.photos/id/6/400/400', // Hardware
+  ],
+  jewelery: [
+    'https://picsum.photos/id/100/400/400', // Jewelry/luxury
+    'https://picsum.photos/id/101/400/400', // Accessories
+    'https://picsum.photos/id/102/400/400', // Fine jewelry
+    'https://picsum.photos/id/103/400/400', // Gems
+  ],
+};
+
+// Fallback to placeholder.com if Picsum fails (very reliable free service)
+const getFallbackImage = (category) => {
+  // Use placeholder.com which generates images with text
+  const categoryMap = {
+    "men's clothing": 'mens-clothing',
+    "women's clothing": 'womens-clothing',
+    electronics: 'electronics',
+    jewelery: 'jewelry',
+  };
+  const categoryText = categoryMap[category] || 'product';
+  // Placeholder.com - very reliable free service
+  return `https://via.placeholder.com/400/CCCCCC/666666?text=${encodeURIComponent(categoryText)}`;
+};
+
 const generateMockProducts = () => {
   const menClothing = [
     {
@@ -87,7 +134,7 @@ const generateMockProducts = () => {
       title: 'Silicon Power 256GB SSD 3D NAND A55 SLC Cache Performance Boost SATA III 2.5',
       price: 109,
       description:
-        '3D NAND flash are applied to deliver high transfer speeds Remarkable transfer speeds that enable faster bootup and improved overall performance. The advanced SLC Cache Technology allows performance boost and longer lifespan',
+        '3D NAND flash are applied to deliver high transfer speeds Remarkable transfer speeds that enable faster bootup and improved overall system performance. The advanced SLC Cache Technology allows performance boost and longer lifespan',
     },
     {
       title: 'WD 4TB Gaming Drive Works with Playstation 4 Portable External Hard Drive',
@@ -135,47 +182,15 @@ const generateMockProducts = () => {
     },
   ];
 
-  // Helper function to generate product-specific SVG image with title and price
-  // Uses embedded SVG data URI - no external service dependency, always works!
-  const getImageUrl = (title, category, price) => {
-    // Create a short product name for the image text (max 20 chars for readability)
-    let imageText = title;
-    if (imageText.length > 20) {
-      // Use first few words + price
-      const words = imageText.split(' ');
-      imageText = `${words.slice(0, 3).join(' ')} $${price}`;
-    } else {
-      imageText = `${imageText} $${price}`;
-    }
-
-    // Color scheme based on category
-    const categoryColors = {
-      "men's clothing": { bg: '#4A90E2', text: '#FFFFFF' }, // Blue
-      "women's clothing": { bg: '#E91E63', text: '#FFFFFF' }, // Pink
-      electronics: { bg: '#607D8B', text: '#FFFFFF' }, // Blue Grey
-      jewelery: { bg: '#FFD700', text: '#000000' }, // Gold
-    };
-
-    const colors = categoryColors[category] || { bg: '#CCCCCC', text: '#666666' };
-
-    // Escape text for SVG
-    const escapedText = imageText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    // Create embedded SVG with product name and price - always matches and always works!
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-  <rect width="400" height="400" fill="${colors.bg}"/>
-  <text x="200" y="200" font-family="Arial, sans-serif" font-size="18" font-weight="bold"
-        text-anchor="middle" dominant-baseline="middle" fill="${colors.text}">
-    ${escapedText}
-  </text>
-</svg>`;
-
-    // Return as data URI - no external service needed!
-    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  };
-
   const products = [];
   let id = 1;
+
+  // Helper function to get image URL for a product
+  const getImageUrl = (category, index) => {
+    const categoryImages = PRODUCT_IMAGES[category] || [];
+    // Use actual image URL if available, otherwise fallback to Unsplash
+    return categoryImages[index % categoryImages.length] || getFallbackImage(category, index);
+  };
 
   // Generate men's clothing products
   menClothing.forEach((product, index) => {
@@ -185,7 +200,7 @@ const generateMockProducts = () => {
       price: product.price,
       description: product.description,
       category: "men's clothing",
-      image: getImageUrl(product.title, "men's clothing", product.price),
+      image: getImageUrl("men's clothing", index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
@@ -202,7 +217,7 @@ const generateMockProducts = () => {
       price: product.price,
       description: product.description,
       category: "women's clothing",
-      image: getImageUrl(product.title, "women's clothing", product.price),
+      image: getImageUrl("women's clothing", index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
@@ -219,7 +234,7 @@ const generateMockProducts = () => {
       price: product.price,
       description: product.description,
       category: 'electronics',
-      image: getImageUrl(product.title, 'electronics', product.price),
+      image: getImageUrl('electronics', index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
@@ -236,7 +251,7 @@ const generateMockProducts = () => {
       price: product.price,
       description: product.description,
       category: 'jewelery',
-      image: getImageUrl(product.title, 'jewelery', product.price),
+      image: getImageUrl('jewelery', index),
       rating: {
         rate: Number((Math.random() * 2 + 3).toFixed(1)),
         count: Math.floor(Math.random() * 400 + 100),
