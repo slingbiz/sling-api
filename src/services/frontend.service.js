@@ -86,16 +86,26 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
       const { url, type, body, sling_mapping: slingMapping, headers } = v;
       apiRetResponse[uniqueIdFe] = { sling_mapping: slingMapping };
 
-      if (cached && cached.cached_response) {
-        // Return cached data immediately
+      // Check if this is fakestoreapi.com - use AI-generated mock data instead
+      const isFakeStoreApi = url && url.includes('fakestoreapi.com');
+
+      // Check if cached data has old fakestoreapi.com image URLs (needs refresh)
+      const cachedData = cached?.cached_response;
+      const hasOldFakeStoreImages =
+        Array.isArray(cachedData) && cachedData.some((item) => item?.image?.includes('fakestoreapi.com/img'));
+
+      if (cached && cachedData && !hasOldFakeStoreImages && !isFakeStoreApi) {
+        // Return cached data immediately (only if not fakestoreapi or doesn't have old images)
         logger.info(`[getSSRApiRes] Using cached response for ${uniqueIdFe} (${url})`);
-        apiRetResponse[uniqueIdFe].data = cached.cached_response;
+        apiRetResponse[uniqueIdFe].data = cachedData;
         apiRetResponse[uniqueIdFe].cached = true;
         return; // Skip fetching, use cache
       }
 
-      // Check if this is fakestoreapi.com - use AI-generated mock data instead
-      const isFakeStoreApi = url && url.includes('fakestoreapi.com');
+      // If cached data has old fakestoreapi.com images, regenerate it
+      if (hasOldFakeStoreImages && isFakeStoreApi) {
+        logger.info(`[getSSRApiRes] Cached data has old fakestoreapi.com images, regenerating for ${uniqueIdFe}`);
+      }
 
       if (isFakeStoreApi) {
         // Generate mock products data instead of calling external API
