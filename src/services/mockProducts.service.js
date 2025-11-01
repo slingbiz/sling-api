@@ -1,56 +1,163 @@
 /**
  * Service to generate realistic fake product data
  * Replaces dependency on external fakestoreapi.com
+ * Uses Unsplash API for product images with caching
  */
 
-// Free image service: Picsum Photos (reliable placeholder images)
-// Using specific image IDs for consistency and category-appropriate images
-const PRODUCT_IMAGES = {
-  "men's clothing": [
-    'https://picsum.photos/id/1018/400/400', // Nature/outdoor gear
-    'https://picsum.photos/id/1043/400/400', // Clothing/apparel
-    'https://picsum.photos/id/1025/400/400', // Fashion
-    'https://picsum.photos/id/1039/400/400', // Lifestyle
-  ],
-  "women's clothing": [
-    'https://picsum.photos/id/1020/400/400', // Fashion
-    'https://picsum.photos/id/1021/400/400', // Clothing
-    'https://picsum.photos/id/1035/400/400', // Style
-    'https://picsum.photos/id/1044/400/400', // Apparel
-    'https://picsum.photos/id/1050/400/400', // Fashion
-    'https://picsum.photos/id/1055/400/400', // Style
-  ],
-  electronics: [
-    'https://picsum.photos/id/1/400/400', // Tech
-    'https://picsum.photos/id/2/400/400', // Electronics
-    'https://picsum.photos/id/3/400/400', // Gadgets
-    'https://picsum.photos/id/4/400/400', // Devices
-    'https://picsum.photos/id/5/400/400', // Technology
-    'https://picsum.photos/id/6/400/400', // Hardware
-  ],
-  jewelery: [
-    'https://picsum.photos/id/100/400/400', // Jewelry/luxury
-    'https://picsum.photos/id/101/400/400', // Accessories
-    'https://picsum.photos/id/102/400/400', // Fine jewelry
-    'https://picsum.photos/id/103/400/400', // Gems
-  ],
-};
+const axios = require('axios');
+const { getDb } = require('../utils/mongoInit');
+const logger = require('../config/logger');
+const config = require('../config/config');
 
-// Fallback to placeholder.com if Picsum fails (very reliable free service)
-const getFallbackImage = (category) => {
-  // Use placeholder.com which generates images with text
-  const categoryMap = {
-    "men's clothing": 'mens-clothing',
-    "women's clothing": 'womens-clothing',
-    electronics: 'electronics',
-    jewelery: 'jewelry',
+// Fallback: Use placeholder.com with product category text
+const getFallbackImage = (category, productTitle) => {
+  const shortTitle = productTitle.split(' ').slice(0, 3).join(' ').substring(0, 30);
+  const categoryColors = {
+    "men's clothing": { bg: '2E7D32', text: 'FFFFFF' }, // Green
+    "women's clothing": { bg: 'C2185B', text: 'FFFFFF' }, // Pink
+    electronics: { bg: '1976D2', text: 'FFFFFF' }, // Blue
+    jewelery: { bg: 'F57C00', text: 'FFFFFF' }, // Orange
   };
-  const categoryText = categoryMap[category] || 'product';
-  // Placeholder.com - very reliable free service
-  return `https://via.placeholder.com/400/CCCCCC/666666?text=${encodeURIComponent(categoryText)}`;
+  const colors = categoryColors[category] || { bg: '9E9E9E', text: 'FFFFFF' };
+  // Placeholder.com - reliable free service with text
+  return `https://via.placeholder.com/400/${colors.bg}/${colors.text}?text=${encodeURIComponent(shortTitle)}`;
 };
 
-const generateMockProducts = () => {
+/**
+ * Fetch product image from Unsplash API or cache
+ * @param {string} category - Product category
+ * @param {string} productTitle - Product title for search
+ * @param {number} productId - Product ID for caching
+ * @returns {Promise<string>} Image URL
+ */
+const getProductImage = async (category, productTitle, productId) => {
+  const db = getDb();
+
+  // If no database connection, use fallback
+  if (!db) {
+    logger.warn(`[getProductImage] Database not available, using fallback for product ${productId}`);
+    return getFallbackImage(category, productTitle);
+  }
+
+  // Create cache key from product title
+  const cacheKey = `product_image_${productId}_${category}_${productTitle}`.replace(/[^a-zA-Z0-9_]/g, '_');
+
+  try {
+    // Check cache first
+    const cached = await db.collection('product_image_cache').findOne({ cache_key: cacheKey });
+
+    if (cached && cached.image_url) {
+      logger.info(`[getProductImage] Using cached image for product ${productId} (${productTitle})`);
+      return cached.image_url;
+    }
+
+    // If Unsplash keys are not configured, use fallback
+    if (!config.unsplash || !config.unsplash.accessKey) {
+      logger.warn(`[getProductImage] Unsplash not configured, using fallback for product ${productId}`);
+      const fallbackUrl = getFallbackImage(category, productTitle);
+      // Cache the fallback for consistency
+      await db.collection('product_image_cache').updateOne(
+        { cache_key: cacheKey },
+        {
+          $set: {
+            cache_key: cacheKey,
+            product_id: productId,
+            product_title: productTitle,
+            category,
+            image_url: fallbackUrl,
+            source: 'fallback',
+            cached_at: new Date(),
+            updated_at: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+      return fallbackUrl;
+    }
+
+    // Build search query from product title and category
+    const searchQuery = `${productTitle} ${category}`.substring(0, 100);
+    const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(
+      searchQuery
+    )}&per_page=1&client_id=${config.unsplash.accessKey}`;
+
+    logger.info(`[getProductImage] Fetching image from Unsplash for product ${productId}: ${searchQuery}`);
+
+    // Fetch from Unsplash API
+    const response = await axios.get(unsplashUrl, {
+      headers: {
+        Authorization: `Client-ID ${config.unsplash.accessKey}`,
+      },
+      timeout: 10000, // 10 second timeout
+    });
+
+    // Extract image URL (use regular size, ~1080px width)
+    let imageUrl = null;
+    if (response.data && response.data.results && response.data.results.length > 0) {
+      const photo = response.data.results[0];
+      // Use regular size (1080px width) for good quality
+      imageUrl = photo.urls?.regular || photo.urls?.small || photo.urls?.thumb;
+    }
+
+    if (!imageUrl) {
+      logger.warn(`[getProductImage] No image found from Unsplash for product ${productId}, using fallback`);
+      imageUrl = getFallbackImage(category, productTitle);
+    } else {
+      logger.info(`[getProductImage] Successfully fetched Unsplash image for product ${productId}`);
+    }
+
+    // Cache the image URL
+    await db.collection('product_image_cache').updateOne(
+      { cache_key: cacheKey },
+      {
+        $set: {
+          cache_key: cacheKey,
+          product_id: productId,
+          product_title: productTitle,
+          category,
+          image_url: imageUrl,
+          source: imageUrl.includes('placeholder.com') ? 'fallback' : 'unsplash',
+          cached_at: new Date(),
+          updated_at: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    return imageUrl;
+  } catch (error) {
+    // Log error but return fallback
+    logger.error(`[getProductImage] Error fetching image for product ${productId}: ${error.message}`);
+    const fallbackUrl = getFallbackImage(category, productTitle);
+
+    // Try to cache the fallback even on error
+    try {
+      await db.collection('product_image_cache').updateOne(
+        { cache_key: cacheKey },
+        {
+          $set: {
+            cache_key: cacheKey,
+            product_id: productId,
+            product_title: productTitle,
+            category,
+            image_url: fallbackUrl,
+            source: 'fallback',
+            error: error.message,
+            cached_at: new Date(),
+            updated_at: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+    } catch (cacheError) {
+      logger.error(`[getProductImage] Failed to cache fallback image: ${cacheError.message}`);
+    }
+
+    return fallbackUrl;
+  }
+};
+
+const generateMockProducts = async () => {
   const menClothing = [
     {
       title: 'Fjallraven - Foldsack No. 1 Backpack, Fits 15 Laptops',
@@ -185,79 +292,47 @@ const generateMockProducts = () => {
   const products = [];
   let id = 1;
 
-  // Helper function to get image URL for a product
-  const getImageUrl = (category, index) => {
-    const categoryImages = PRODUCT_IMAGES[category] || [];
-    // Use actual image URL if available, otherwise fallback to Unsplash
-    return categoryImages[index % categoryImages.length] || getFallbackImage(category, index);
+  // Helper function to generate products with images
+  const generateProductsWithImages = async (productList, category, startId) => {
+    // Fetch all images in parallel for better performance
+    const productPromises = productList.map(async (product, index) => {
+      const productId = startId + index;
+      const imageUrl = await getProductImage(category, product.title, productId);
+      return {
+        id: productId,
+        title: product.title,
+        price: product.price,
+        description: product.description,
+        category,
+        image: imageUrl,
+        rating: {
+          rate: Number((Math.random() * 2 + 3).toFixed(1)),
+          count: Math.floor(Math.random() * 400 + 100),
+        },
+      };
+    });
+
+    return Promise.all(productPromises);
   };
 
   // Generate men's clothing products
-  menClothing.forEach((product, index) => {
-    products.push({
-      id: id + index,
-      title: product.title,
-      price: product.price,
-      description: product.description,
-      category: "men's clothing",
-      image: getImageUrl("men's clothing", index),
-      rating: {
-        rate: Number((Math.random() * 2 + 3).toFixed(1)),
-        count: Math.floor(Math.random() * 400 + 100),
-      },
-    });
-  });
+  const menProducts = await generateProductsWithImages(menClothing, "men's clothing", id);
+  products.push(...menProducts);
   id += menClothing.length;
 
   // Generate women's clothing products
-  womenClothing.forEach((product, index) => {
-    products.push({
-      id: id + index,
-      title: product.title,
-      price: product.price,
-      description: product.description,
-      category: "women's clothing",
-      image: getImageUrl("women's clothing", index),
-      rating: {
-        rate: Number((Math.random() * 2 + 3).toFixed(1)),
-        count: Math.floor(Math.random() * 400 + 100),
-      },
-    });
-  });
+  const womenProducts = await generateProductsWithImages(womenClothing, "women's clothing", id);
+  products.push(...womenProducts);
   id += womenClothing.length;
 
   // Generate electronics products
-  electronics.forEach((product, index) => {
-    products.push({
-      id: id + index,
-      title: product.title,
-      price: product.price,
-      description: product.description,
-      category: 'electronics',
-      image: getImageUrl('electronics', index),
-      rating: {
-        rate: Number((Math.random() * 2 + 3).toFixed(1)),
-        count: Math.floor(Math.random() * 400 + 100),
-      },
-    });
-  });
+  const electronicsProducts = await generateProductsWithImages(electronics, 'electronics', id);
+  products.push(...electronicsProducts);
   id += electronics.length;
 
   // Generate jewelry products
-  jewelery.forEach((product, index) => {
-    products.push({
-      id: id + index,
-      title: product.title,
-      price: product.price,
-      description: product.description,
-      category: 'jewelery',
-      image: getImageUrl('jewelery', index),
-      rating: {
-        rate: Number((Math.random() * 2 + 3).toFixed(1)),
-        count: Math.floor(Math.random() * 400 + 100),
-      },
-    });
-  });
+  const jewelryProducts = await generateProductsWithImages(jewelery, 'jewelery', id);
+  products.push(...jewelryProducts);
 
   return products;
 };

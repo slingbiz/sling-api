@@ -110,11 +110,14 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
       if (isFakeStoreApi) {
         // Generate mock products data instead of calling external API
         logger.info(`[getSSRApiRes] Generating mock products for ${uniqueIdFe} instead of calling ${url}`);
-        const mockData = generateMockProducts();
 
         // Cache the mock data and return promise
         const mockPromise = (async () => {
           try {
+            // Generate mock products (async - fetches images from Unsplash with caching)
+            const mockData = await generateMockProducts();
+
+            // Cache the mock data
             await db.collection('api_cache').updateOne(
               { cache_key: cacheKey },
               {
@@ -131,13 +134,17 @@ const getSSRApiRes = async ({ pathname, clientId }) => {
               { upsert: true }
             );
             logger.info(`[getSSRApiRes] Cached mock products for ${uniqueIdFe}`);
+            return { data: mockData, uniqueIdFe, success: true, cached: false };
           } catch (cacheError) {
-            logger.error(`[getSSRApiRes] Failed to cache mock products for ${uniqueIdFe}: ${cacheError.message}`);
+            logger.error(
+              `[getSSRApiRes] Failed to generate or cache mock products for ${uniqueIdFe}: ${cacheError.message}`
+            );
+            // Return empty data on error so frontend can still render
+            return { data: [], uniqueIdFe, success: false, error: cacheError.message };
           }
-          return { data: mockData, uniqueIdFe, success: true, cached: false };
         })();
 
-        // Return mock data immediately (wrapped in promise)
+        // Return mock data (wrapped in promise)
         fetchPromises.push({ promise: mockPromise, uniqueIdFe });
       } else {
         // For other APIs, fetch from external source

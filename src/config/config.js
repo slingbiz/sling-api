@@ -23,6 +23,9 @@ const envVarsSchema = Joi.object()
     SMTP_USERNAME: Joi.string().description('username for email server'),
     SMTP_PASSWORD: Joi.string().description('password for email server'),
     EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
+    UNSPLASH_ACCESS_KEY: Joi.string().description('Unsplash API access key'),
+    UNSPLASH_SECRET_KEY: Joi.string().description('Unsplash API secret key'),
+    UNSPLASH_APP_ID: Joi.string().description('Unsplash API app ID'),
   })
   .unknown();
 
@@ -60,5 +63,10 @@ module.exports = {
       },
     },
     from: envVars.EMAIL_FROM,
+  },
+  unsplash: {
+    accessKey: envVars.UNSPLASH_ACCESS_KEY,
+    secretKey: envVars.UNSPLASH_SECRET_KEY,
+    appId: envVars.UNSPLASH_APP_ID,
   },
 };
