@@ -30,12 +30,13 @@ const getInitProps = catchAsync(async (req, res) => {
   // Get Page Template Type & Constants from route
   const matchingRoute = await frontendService.getMatchingRoute({ asPath, query, clientId });
 
-  if (matchingRoute && !Object.keys(matchingRoute)?.length) {
+  // Check if matchingRoute is empty (no route found)
+  // matchingRoute will be {} if no match found, or a route object if match found
+  if (!matchingRoute || Object.keys(matchingRoute).length === 0) {
+    console.log('[getInitProps] No matching route found in Global Sling Handler. - ', asPath);
     res
       .status(httpStatus.OK)
       .send({ initConfig: initConfigData, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
-    console.log('[getInitProps] No matching route found in Global Sling Handler. - ', asPath);
-    // console.log(initConfigData);
     return;
   }
   const { page_template: pageTemplate } = matchingRoute;
