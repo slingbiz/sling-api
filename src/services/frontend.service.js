@@ -251,13 +251,32 @@ const getRouteConstants = () => {};
 const getMatchingRoute = async ({ asPath, query, clientId }) => {
   // TODO: Do not process for url of types /_next/static
 
+  logger.info('=== [getMatchingRoute] Route Matching Request ===');
+  logger.info(`[getMatchingRoute] asPath: "${asPath}"`);
+  logger.info(`[getMatchingRoute] clientId: "${clientId}"`);
+  logger.info(`[getMatchingRoute] query: ${JSON.stringify(query || {})}`);
+
   const db = getDb();
 
   // Fetch all routes for the client
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
-  logger.info(`[getMatchingRoute] Searching for route matching asPath: "${asPath}" for client: ${clientId}`);
-  logger.info(`[getMatchingRoute] Found ${allRoutes.length} routes in database for client: ${clientId}`);
+  logger.info(`[getMatchingRoute] Found ${allRoutes.length} routes in database for client: "${clientId}"`);
+
+  // Log all routes found
+  if (allRoutes.length > 0) {
+    logger.info(`[getMatchingRoute] Routes found:`);
+    allRoutes.forEach((route, index) => {
+      const pageTemplate = route.page_template || 'NOT SET';
+      const ownership = route.ownership || 'NOT SET';
+      logger.info(
+        `[getMatchingRoute]   ${index + 1}. url_string: "${route.url_string}", ` +
+          `page_template: "${pageTemplate}", ownership: "${ownership}"`
+      );
+    });
+  } else {
+    logger.warn(`[getMatchingRoute] ⚠ No routes found for client_id: "${clientId}"`);
+  }
 
   // Also check if there's a route for "/" with different client_id or ownership (for debugging)
   if (asPath === '/') {
