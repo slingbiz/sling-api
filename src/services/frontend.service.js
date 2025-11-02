@@ -257,7 +257,28 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   const allRoutes = await db.collection('page_routes').find({ client_id: clientId }).toArray();
 
   logger.info(`[getMatchingRoute] Searching for route matching asPath: "${asPath}" for client: ${clientId}`);
-  logger.info(`[getMatchingRoute] Found ${allRoutes.length} routes in database`);
+  logger.info(`[getMatchingRoute] Found ${allRoutes.length} routes in database for client: ${clientId}`);
+
+  // Also check if there's a route for "/" with different client_id or ownership (for debugging)
+  if (asPath === '/') {
+    const rootRoutes = await db.collection('page_routes').find({ url_string: '/' }).toArray();
+    if (rootRoutes.length > 0) {
+      logger.info(`[getMatchingRoute] Found ${rootRoutes.length} route(s) with url_string="/" in database:`);
+      rootRoutes.forEach((route) => {
+        logger.info(
+          `[getMatchingRoute]   - Route with client_id: "${route.client_id}", ownership: "${route.ownership}", active: ${route.is_active}`
+        );
+      });
+    } else {
+      logger.info(`[getMatchingRoute] No route found in entire database with url_string="/"`);
+    }
+  }
+
+  // Log all route url_strings to debug
+  if (allRoutes.length > 0) {
+    const routeStrings = allRoutes.map((r) => `"${r.url_string}"`).join(', ');
+    logger.info(`[getMatchingRoute] All route url_strings for client ${clientId}: [${routeStrings}]`);
+  }
 
   let routeRet = {};
 
@@ -289,8 +310,13 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     // Special case: handle root path "/" explicitly
     if (isRootPath) {
       // Check if this route is for root path "/"
-      logger.info(`[getMatchingRoute] Checking route "${urlString}" (cleaned: "${cleanedUrlString}") for root path match`);
-      if (urlString === '/' || cleanedUrlString === '') {
+      // Log exact comparison to debug
+      const exactMatch = urlString === '/';
+      const cleanedMatch = cleanedUrlString === '';
+      logger.info(
+        `[getMatchingRoute] Checking route "${urlString}" (cleaned: "${cleanedUrlString}") | exactMatch: ${exactMatch}, cleanedMatch: ${cleanedMatch}`
+      );
+      if (exactMatch || cleanedMatch) {
         logger.info(`[getMatchingRoute] ✓ MATCH! Found root path route: ${urlString}`);
         routeRet = routeObj;
         break;
@@ -347,6 +373,9 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     logger.warn(`[getMatchingRoute] ✗ No matching route found for asPath: "${asPath}"`);
     // Log all available routes for debugging
     logger.info(`[getMatchingRoute] Available routes: ${allRoutes.map((r) => r.url_string).join(', ')}`);
+    if (isRootPath) {
+      logger.info(`[getMatchingRoute] Tip: Create a route with url_string: "/" to handle the root path`);
+    }
   } else {
     logger.info(`[getMatchingRoute] ✓ Successfully matched route: "${routeRet.url_string}"`);
   }
