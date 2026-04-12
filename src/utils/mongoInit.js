@@ -17,8 +17,6 @@ module.exports = {
 
       // Connect mongoose separately
       await mongoose.connect(process.env.MONGODB_URL, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
         serverSelectionTimeoutMS: 15000,
         connectTimeoutMS: 15000,
         bufferCommands: false,

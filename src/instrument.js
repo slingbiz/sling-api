@@ -1,27 +1,23 @@
 // Import with `import * as Sentry from "@sentry/node"` if you are using ESM
 const Sentry = require('@sentry/node');
-const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+
+const integrations = [];
+// @sentry/profiling-node ships native binaries only for Node 16/18/20/22; Vercel may run newer
+// Node versions where profiling fails or must be built from source — skip on serverless.
+if (!process.env.VERCEL) {
+  try {
+    const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+    integrations.push(nodeProfilingIntegration());
+    Sentry.profiler.startProfiler();
+    Sentry.startSpan({ name: 'My First Transaction' }, () => {});
+    Sentry.profiler.stopProfiler();
+  } catch {
+    // profiling optional
+  }
+}
 
 Sentry.init({
   dsn: 'https://ba7f2dbc8fc31c1357302f2a28d5c27c@o4508544815005696.ingest.de.sentry.io/4508544821100624',
-  integrations: [nodeProfilingIntegration()],
-  // Tracing
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  integrations,
+  tracesSampleRate: 1.0,
 });
-// Manually call startProfiler and stopProfiler
-// to profile the code in between
-Sentry.profiler.startProfiler();
-
-// Starts a transaction that will also be profiled
-Sentry.startSpan(
-  {
-    name: 'My First Transaction',
-  },
-  () => {
-    // the code executing inside the transaction will be wrapped in a span and profiled
-  }
-);
-
-// Calls to stopProfiling are optional - if you don't stop the profiler, it will keep profiling
-// your application until the process exits or stopProfiling is called.
-Sentry.profiler.stopProfiler();
