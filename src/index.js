@@ -18,9 +18,36 @@ const startServer = async () => {
   });
 };
 
-startServer();
+// Local dev: start a traditional HTTP server
+if (process.env.NODE_ENV !== 'production') {
+  startServer();
+}
 
-module.exports = app;
+// Serverless (Vercel): ensure DB is connected before each request
+// Connection is cached across invocations in the same instance
+let _connectionPromise = null;
+
+const ensureDB = () => {
+  if (_connectionPromise) return _connectionPromise;
+  _connectionPromise = new Promise((resolve) => {
+    mongoUtil.connectToServer((err, db) => {
+      if (err) {
+        logger.error(`DB connection failed: ${err.message}`);
+        _connectionPromise = null; // allow retry on next request
+      } else {
+        app.db = db;
+        logger.info('DB connected');
+      }
+      resolve();
+    });
+  });
+  return _connectionPromise;
+};
+
+module.exports = async (req, res) => {
+  await ensureDB();
+  return app(req, res);
+};
 
 const exitHandler = () => {
   if (server) {
