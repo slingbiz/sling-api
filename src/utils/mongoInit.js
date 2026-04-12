@@ -8,7 +8,10 @@ let _dbGoose;
 module.exports = {
   async connectToServer(callback) {
     try {
-      const client = await MongoClient.connect(process.env.MONGODB_URL);
+      const client = await MongoClient.connect(process.env.MONGODB_URL, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
+      });
       logger.info('Connected to MongoDB');
       _db = client.db(process.env.MONGODB_DB || 'sling');
 
@@ -16,6 +19,8 @@ module.exports = {
       await mongoose.connect(process.env.MONGODB_URL, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
       });
       mongoose.pluralize(null); // Disable pluralization of collection names
       _dbGoose = mongoose.connection;
@@ -23,7 +28,7 @@ module.exports = {
       callback(null, _db, _dbGoose);
     } catch (err) {
       logger.error(`Failed to connect to the database: ${err.stack}`);
-      process.exit(1);
+      callback(err);
     }
   },
 

@@ -6,20 +6,16 @@ const mongoUtil = require('./utils/mongoInit');
 let server;
 
 const startServer = async () => {
-  try {
-    await mongoUtil.connectToServer((err, db, dbGoose) => {
-      if (err) {
-        throw err;
-      }
+  await mongoUtil.connectToServer((err, db, dbGoose) => {
+    if (err) {
+      logger.error(`Failed to connect to DB, server starting without database: ${err.message}`);
+    } else {
       app.db = db;
-      server = app.listen(config.port, () => {
-        logger.info(`Server is running on port ${config.port}`);
-      });
+    }
+    server = app.listen(config.port, () => {
+      logger.info(`Server is running on port ${config.port}`);
     });
-  } catch (error) {
-    logger.error(`Failed to start server: ${error}`);
-    process.exit(1);
-  }
+  });
 };
 
 startServer();
