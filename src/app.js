@@ -1,5 +1,8 @@
 require('./instrument.js');
 const Sentry = require('@sentry/node');
+const mongoose = require('mongoose');
+
+mongoose.set('bufferCommands', false);
 
 const express = require('express');
 const helmet = require('helmet');
