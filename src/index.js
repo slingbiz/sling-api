@@ -24,6 +24,8 @@ const startServer = async () => {
 
 startServer();
 
+module.exports = app;
+
 const exitHandler = () => {
   if (server) {
     server.close(() => {
