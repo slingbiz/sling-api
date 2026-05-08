@@ -306,6 +306,14 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
     return url.trim().replace(/^\/+|\/+$/g, '');
   };
 
+  // Normalize incoming asPath by removing query string and hash.
+  const getPathWithoutQueryOrHash = (url) => {
+    if (!url) {
+      return '/';
+    }
+    return url.split('?')[0].split('#')[0] || '/';
+  };
+
   // Helper function to convert dynamic URL to regex
   const convertToRegexPattern = (urlString) => {
     // Replace dynamic segments like <city>, <l1Category>, <l2Category> with regex capturing groups
@@ -313,7 +321,8 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
   };
 
   // Clean the asPath for comparison
-  const cleanedAsPath = `/${cleanUrl(asPath)}`;
+  const normalizedAsPath = getPathWithoutQueryOrHash(asPath);
+  const cleanedAsPath = `/${cleanUrl(normalizedAsPath)}`;
 
   // Special handling for root path "/"
   // When asPath is "/", cleanedAsPath becomes "/" (empty string + "/")
@@ -384,6 +393,21 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
 
         routeRet = routeObj;
         break;
+      }
+    }
+  }
+
+  if (Object.keys(routeRet).length === 0) {
+    // Backward compatibility: allow "/" to resolve to "/home" if root route is not configured.
+    if (isRootPath) {
+      const homeRoute = allRoutes.find((routeObj) => {
+        const cleanedRoute = cleanUrl(routeObj.url_string || '');
+        return cleanedRoute === 'home';
+      });
+
+      if (homeRoute) {
+        logger.info('[getMatchingRoute] Root path fallback matched "/home" route');
+        routeRet = homeRoute;
       }
     }
   }

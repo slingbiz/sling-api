@@ -116,4 +116,19 @@ describe('Frontend Service - getMatchingRoute', () => {
 
     expect(result.url_string).toBe('/harvest');
   });
+
+  it('should fallback root path "/" to "/home" route when root route is missing', async () => {
+    getDb()
+      .collection()
+      .find()
+      .toArray.mockResolvedValue([{ url_string: '/home', client_id: 'test-client-id', keys: [] }]);
+
+    const result = await frontendService.getMatchingRoute({
+      asPath: '/',
+      query: {},
+      clientId: 'test-client-id',
+    });
+
+    expect(result.url_string).toBe('/home');
+  });
 });
