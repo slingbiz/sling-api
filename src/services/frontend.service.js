@@ -408,6 +408,12 @@ const getMatchingRoute = async ({ asPath, query, clientId }) => {
       if (homeRoute) {
         logger.info('[getMatchingRoute] Root path fallback matched "/home" route');
         routeRet = homeRoute;
+      } else {
+        const homeTemplateRoute = allRoutes.find((routeObj) => routeObj.page_template === 'home');
+        if (homeTemplateRoute) {
+          logger.info('[getMatchingRoute] Root path fallback matched route with page_template="home"');
+          routeRet = homeTemplateRoute;
+        }
       }
     }
   }

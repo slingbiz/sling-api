@@ -131,4 +131,27 @@ describe('Frontend Service - getMatchingRoute', () => {
 
     expect(result.url_string).toBe('/home');
   });
+
+  it('should fallback root path "/" to any route using home template when "/home" is missing', async () => {
+    getDb()
+      .collection()
+      .find()
+      .toArray.mockResolvedValue([
+        {
+          url_string: '/blog/<slug>',
+          client_id: 'test-client-id',
+          keys: ['blog_slug'],
+          page_template: 'home',
+        },
+      ]);
+
+    const result = await frontendService.getMatchingRoute({
+      asPath: '/',
+      query: {},
+      clientId: 'test-client-id',
+    });
+
+    expect(result.url_string).toBe('/blog/<slug>');
+    expect(result.page_template).toBe('home');
+  });
 });
