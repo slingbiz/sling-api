@@ -9,6 +9,7 @@ const ApiError = require('../utils/ApiError');
 const { tokenTypes } = require('../config/tokens');
 const { getDb } = require('../utils/mongoInit');
 const config = require('../config/config');
+const logger = require('../config/logger');
 
 /**
  * Login with username and password
@@ -39,18 +40,24 @@ const loginUserWithEmailAndPassword = async (email, password) => {
  * @returns {Promise<{ user: import('../models/user.model'), tokens: object, isNewUser: boolean }>}
  */
 const loginOrRegisterWithGoogleIdToken = async (idToken) => {
-  if (!config.google?.clientId) {
+  const audienceIds = config.google?.audienceIds || [];
+  if (!audienceIds.length) {
     throw new ApiError(httpStatus.NOT_IMPLEMENTED, 'Google sign-in is not configured on this server');
   }
 
-  const client = new OAuth2Client(config.google.clientId);
+  const client = new OAuth2Client(audienceIds[0]);
   let ticket;
   try {
     ticket = await client.verifyIdToken({
       idToken,
-      audience: config.google.clientId,
+      audience: audienceIds.length === 1 ? audienceIds[0] : audienceIds,
     });
   } catch (e) {
+    logger.warn(
+      `[auth.google] verifyIdToken failed: ${e.message}. ` +
+        'Check that GOOGLE_CLIENT_ID on the API matches the Web client ID in Studio (NEXT_PUBLIC_GOOGLE_CLIENT_ID), ' +
+        'and that Google Cloud Console "Authorized JavaScript origins" includes the URL you open Studio from (e.g. http://localhost:2021).',
+    );
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid or expired Google sign-in');
   }
 

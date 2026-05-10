@@ -29,7 +29,9 @@ const envVarsSchema = Joi.object()
     GOOGLE_CLIENT_ID: Joi.string()
       .allow('')
       .optional()
-      .description('Google OAuth Web client ID (for Sign in with Google ID token verification)'),
+      .description(
+        'Google OAuth Web client ID(s) for ID token verification; comma-separated if multiple. Must match Studio NEXT_PUBLIC_GOOGLE_CLIENT_ID.',
+      ),
   })
   .unknown();
 
@@ -38,6 +40,12 @@ const { value: envVars, error } = envVarsSchema.prefs({ errors: { label: 'key' }
 if (error) {
   throw new Error(`Config validation error: ${error.message}`);
 }
+
+const googleClientIdRaw = envVars.GOOGLE_CLIENT_ID || '';
+const googleAudienceIds = googleClientIdRaw
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 module.exports = {
   env: envVars.NODE_ENV,
@@ -70,6 +78,7 @@ module.exports = {
     appId: envVars.UNSPLASH_APP_ID,
   },
   google: {
-    clientId: envVars.GOOGLE_CLIENT_ID || '',
+    clientId: googleClientIdRaw,
+    audienceIds: googleAudienceIds,
   },
 };
