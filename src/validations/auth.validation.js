@@ -23,6 +23,12 @@ const tick = {
   }),
 };
 
+const google = {
+  body: Joi.object().keys({
+    idToken: Joi.string().required(),
+  }),
+};
+
 const logout = {
   body: Joi.object().keys({
     refreshToken: Joi.string().required(),
@@ -59,6 +65,7 @@ const verifyEmail = {
 module.exports = {
   register,
   login,
+  google,
   logout,
   refreshTokens,
   forgotPassword,

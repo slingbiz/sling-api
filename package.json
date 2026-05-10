@@ -66,6 +66,7 @@
     "express-mongo-sanitize": "^2.0.0",
     "express-rate-limit": "^5.0.0",
     "firebase-admin": "^10.0.2",
+    "google-auth-library": "^9.15.1",
     "helmet": "^4.1.0",
     "http-status": "^1.4.0",
     "joi": "^17.3.0",

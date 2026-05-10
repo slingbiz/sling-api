@@ -26,6 +26,10 @@ const envVarsSchema = Joi.object()
     UNSPLASH_ACCESS_KEY: Joi.string().description('Unsplash API access key'),
     UNSPLASH_SECRET_KEY: Joi.string().description('Unsplash API secret key'),
     UNSPLASH_APP_ID: Joi.string().description('Unsplash API app ID'),
+    GOOGLE_CLIENT_ID: Joi.string()
+      .allow('')
+      .optional()
+      .description('Google OAuth Web client ID (for Sign in with Google ID token verification)'),
   })
   .unknown();
 
@@ -64,5 +68,8 @@ module.exports = {
     accessKey: envVars.UNSPLASH_ACCESS_KEY,
     secretKey: envVars.UNSPLASH_SECRET_KEY,
     appId: envVars.UNSPLASH_APP_ID,
+  },
+  google: {
+    clientId: envVars.GOOGLE_CLIENT_ID || '',
   },
 };

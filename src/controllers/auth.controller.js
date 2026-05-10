@@ -25,6 +25,16 @@ const login = catchAsync(async (req, res) => {
   res.send({ user, tokens });
 });
 
+const googleAuth = catchAsync(async (req, res) => {
+  const { idToken } = req.body;
+  const { user, tokens, isNewUser } = await authService.loginOrRegisterWithGoogleIdToken(idToken);
+  if (isNewUser) {
+    const userName = user.name ? user.name : user.email.split('@')[0];
+    await emailService.sendWelcomeEmail(user.email, userName);
+  }
+  res.status(httpStatus.OK).send({ user, tokens, isNewUser });
+});
+
 const logout = catchAsync(async (req, res) => {
   await authService.logout(req.body.refreshToken);
   res.status(httpStatus.NO_CONTENT).send();
@@ -89,6 +99,7 @@ const tick = catchAsync(async (req, res) => {
 module.exports = {
   register,
   login,
+  googleAuth,
   logout,
   tick,
   refreshTokens,
