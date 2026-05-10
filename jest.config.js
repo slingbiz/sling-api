@@ -1,9 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
-  testEnvironmentOptions: {
-    NODE_ENV: 'test',
-  },
-  restoreMocks: true,
-  coveragePathIgnorePatterns: ['node_modules', 'src/config', 'src/app.js', 'tests'],
-  coverageReporters: ['text', 'lcov', 'clover', 'html'],
+  roots: ['<rootDir>/src'],
+  // Avoid matching arbitrary files named `test.js` (e.g. src/constants/test.js).
+  testMatch: ['**/*.test.js', '**/*.spec.js'],
 };

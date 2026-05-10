@@ -6,6 +6,36 @@ const Account = require('../models/account.model');
 const ApiError = require('../utils/ApiError');
 const { CLIENT_VERIFICATION_STEPS } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
+const {
+  getTenantSlugCandidate,
+  formatTenantSlugWithAttempt,
+  shouldReplaceWithPreviewClientUrl,
+} = require('../utils/tenantSlug');
+
+const PREVIEW_FRONTEND_BASE_DOMAIN = process.env.PREVIEW_FRONTEND_BASE_DOMAIN || 'sling.biz';
+const UNIQUE_TENANT_SLUG_MAX_ATTEMPTS = 200;
+
+async function allocateUniqueTenantSlug(AccountModel, ownerUserRef, candidateBase) {
+  const baseSlug = candidateBase || getTenantSlugCandidate({});
+
+  for (let attempt = 0; attempt < UNIQUE_TENANT_SLUG_MAX_ATTEMPTS; attempt += 1) {
+    const label = formatTenantSlugWithAttempt(baseSlug, attempt);
+    // eslint-disable-next-line no-await-in-loop
+    const existing = await AccountModel.findOne({ tenantSlug: label }).select('user');
+
+    if (!existing || String(existing.user) === String(ownerUserRef)) return label;
+  }
+
+  throw new ApiError(
+    httpStatus.CONFLICT,
+    'Could not allocate a unique preview subdomain slug; retry or contact support.',
+  );
+}
+
+function previewClientUrlForSlug(tenantSlug) {
+  // Matches DNS wildcard *.preview.<PREVIEW_FRONTEND_BASE_DOMAIN> (e.g. acme.preview.sling.biz)
+  return `https://${tenantSlug}.preview.${PREVIEW_FRONTEND_BASE_DOMAIN}`;
+}
 
 const CompanyRegistration = async (formData, user) => {
   if (await Account.isEmailTaken(formData.email)) {
@@ -35,11 +65,32 @@ const CompanyKeyCodeSetup = async (user, formData) => {
   const query = { user };
   const verificationStep = CLIENT_VERIFICATION_STEPS.COMPLETED;
   try {
-    const company = await Account.findOneAndUpdate(query, { ...formData, verificationStep }, { new: true });
-    console.log(company);
+    const existing = await Account.findOne(query);
+
+    const baseSlug = getTenantSlugCandidate({
+      companyName: existing?.companyName,
+      orgName: existing?.orgName,
+      email: existing?.email,
+    });
+
+    const tenantSlug = existing?.tenantSlug
+      ? existing.tenantSlug
+      : await allocateUniqueTenantSlug(Account, user, baseSlug);
+
+    let { clientUrl } = formData;
+    if (shouldReplaceWithPreviewClientUrl(clientUrl)) {
+      clientUrl = previewClientUrlForSlug(tenantSlug);
+    }
+
+    const company = await Account.findOneAndUpdate(
+      query,
+      { ...formData, tenantSlug, clientUrl, verificationStep },
+      { new: true },
+    );
     return company;
   } catch (e) {
     console.log('Error in CompanyKeyCodeSetup [account.service]: ', e.message);
+    if (e instanceof ApiError) throw e;
   }
 };
 

@@ -1,8 +1,69 @@
 const { getDb } = require('../utils/mongoInit');
 const logger = require('../config/logger');
+const Account = require('../models/account.model');
+const { canonicalHostname, extractTenantSlugFromPreviewHostname } = require('../utils/previewHostname');
+
+function pickInboundHost(req) {
+  const raw =
+    req.header('x-sling-origin-host') ||
+    req.header('x-forwarded-host') ||
+    req.header('host') ||
+    '';
+  return canonicalHostname(raw);
+}
+
+/** @returns {string|null} */
+function previewInitSecretConfigured() {
+  const v = process.env.SLING_PREVIEW_INIT_SECRET;
+  if (typeof v === 'string' && v.length > 0) return v;
+  return null;
+}
 
 const setClientFE = async (req, res, next) => {
   try {
+    const previewSecret = previewInitSecretConfigured();
+    const inboundHost = pickInboundHost(req);
+
+    const tenantSlugGuess = previewSecret ? extractTenantSlugFromPreviewHostname(inboundHost) : null;
+
+    if (tenantSlugGuess && previewSecret) {
+      const sentSecret = req.header('x-sling-preview-init-secret');
+      if (!sentSecret) {
+        logger.warn('[setClientFE] Preview host parsed but missing x-sling-preview-init-secret');
+        return res.status(403).json({
+          error: {
+            message: 'Preview storefront bootstrap credential missing.',
+          },
+        });
+      }
+      if (sentSecret !== previewSecret) {
+        logger.warn('[setClientFE] Invalid preview bootstrap secret');
+        return res.status(403).json({
+          error: {
+            message: 'Invalid preview storefront credentials.',
+          },
+        });
+      }
+
+      const tenant = await Account.findOne({ tenantSlug: tenantSlugGuess }).select(['user', 'email']);
+      const ownerKey = tenant?.user ? String(tenant.user) : '';
+      const emailKey = tenant?.email ? String(tenant.email) : '';
+
+      if (!ownerKey && !emailKey) {
+        logger.warn(`[setClientFE] Unknown tenantSlug from preview hostname: "${tenantSlugGuess}"`);
+        return res.status(404).json({
+          error: {
+            message: 'Unknown preview storefront tenant.',
+          },
+        });
+      }
+
+      req.clientId = ownerKey || emailKey || 'demo-id';
+      logger.info(`[setClientFE] Resolved clientId via preview host slug "${tenantSlugGuess}" -> "${req.clientId}"`);
+      next();
+      return;
+    }
+
     const clientId = req.header('client');
     const license = req.header('license');
     const authHeader = req.header('authorization') || req.header('Authorization');
@@ -10,11 +71,12 @@ const setClientFE = async (req, res, next) => {
 
     logger.info('=== [setClientFE] Request Details ===');
     logger.info(`[setClientFE] Client ID from header: "${clientId}"`);
-    logger.info(`[setClientFE] License/API Key from header: "${license ? license.substring(0, 10) + '...' : 'NOT PROVIDED'}"`);
+    logger.info(`[setClientFE] License/API Key from header: "${license ? `${license.substring(0, 10)}...` : 'NOT PROVIDED'}"`);
     logger.info(`[setClientFE] Authorization header: "${authHeader ? 'PROVIDED' : 'NOT PROVIDED'}"`);
-    logger.info(`[setClientFE] Token (first 20 chars): "${token ? token.substring(0, 20) + '...' : 'NOT PROVIDED'}"`);
+    logger.info(`[setClientFE] Token (first 20 chars): "${token ? `${token.substring(0, 20)}...` : 'NOT PROVIDED'}"`);
     logger.info(`[setClientFE] Request path: ${req.path}`);
     logger.info(`[setClientFE] Request method: ${req.method}`);
+    logger.info(`[setClientFE] Inbound storefront host hint: "${inboundHost || 'n/a'}"`);
 
     if (!clientId || !license) {
       logger.warn(`[setClientFE] Missing client ID or license - clientId: "${clientId}", license: "${license ? 'PROVIDED' : 'NOT PROVIDED'}"`);
@@ -27,10 +89,9 @@ const setClientFE = async (req, res, next) => {
 
     const db = getDb();
 
-    // Validate secret
     logger.info(`[setClientFE] Looking up client_meta for apiKey: "${license.substring(0, 10)}..."`);
     const user = (await db.collection('client_meta').findOne({ apiKey: license })) || {};
-    
+
     logger.info(`[setClientFE] Client meta lookup result:`);
     logger.info(`[setClientFE]   - Found user: ${user._id ? 'YES' : 'NO'}`);
     if (user._id) {
@@ -48,7 +109,6 @@ const setClientFE = async (req, res, next) => {
       });
     }
 
-    // Validate token & Email id. If not valid. Return with error.
     logger.info(`[setClientFE] Validating client ID match:`);
     logger.info(`[setClientFE]   - Client ID from header: "${clientId}"`);
     logger.info(`[setClientFE]   - Email from client_meta: "${user.email}"`);
@@ -66,12 +126,10 @@ const setClientFE = async (req, res, next) => {
       });
     }
 
-    // Else set clientId in the req.
     req.clientId = clientId || 'demo-id';
     logger.info(`[setClientFE] ✓ Validation passed - Setting req.clientId: "${req.clientId}"`);
     logger.info('=== [setClientFE] Validation Complete ===');
 
-    // call next middleware in the stack
     next();
   } catch (error) {
     logger.error(`[setClientFE] Exception: ${error.message}`);

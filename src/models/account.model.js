@@ -102,6 +102,13 @@ const acountSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    tenantSlug: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      unique: true,
+      sparse: true,
+    },
     database: {
       type: String,
       trim: true,
