@@ -34,6 +34,22 @@ const deleteWidget = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send(widgets);
 });
 
+const submitWidgetForReview = catchAsync(async (req, res) => {
+  const widget = await widgetsService.submitWidgetForReview(req.params.widgetId, req.clientId);
+  res.status(httpStatus.OK).send({ widget });
+});
+
+const reviewWidget = catchAsync(async (req, res) => {
+  const { action, notes } = req.body;
+  const widget = await widgetsService.reviewWidget(req.params.widgetId, { action, notes }, req.clientId, req.user.id);
+  res.status(httpStatus.OK).send({ widget });
+});
+
+const publishWidget = catchAsync(async (req, res) => {
+  const widget = await widgetsService.publishWidget(req.params.widgetId, req.clientId);
+  res.status(httpStatus.OK).send({ widget });
+});
+
 module.exports = {
   ping,
   getWidgets,
@@ -41,4 +57,7 @@ module.exports = {
   updateWidget,
   updateWidgetByKey,
   deleteWidget,
+  submitWidgetForReview,
+  reviewWidget,
+  publishWidget,
 };

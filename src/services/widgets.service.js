@@ -1,8 +1,17 @@
 const httpStatus = require('http-status');
 const { Widget } = require('../models');
 const ApiError = require('../utils/ApiError');
+const { WidgetStatus } = require('../constants/appEnums');
 
 const { getDb } = require('../utils/mongoInit');
+
+const findTenantWidget = async (id, clientId) => {
+  const widget = await Widget.findOne({ _id: id, client_id: clientId });
+  if (!widget) {
+    throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${id}`);
+  }
+  return widget;
+};
 
 const createWidget = async (widgetBody, clientId) => {
   if (await Widget.isKeyTaken(widgetBody.key, widgetBody.type, clientId)) {
@@ -21,7 +30,7 @@ const createWidget = async (widgetBody, clientId) => {
 //   return { widgets, tc: widgets.length };
 // };
 
-const getWidgets = async ({ page = 0, size = 50, query, clientId, type }) => {
+const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }) => {
   const db = getDb();
   const skip = page * size;
   const andArray = [];
@@ -29,6 +38,13 @@ const getWidgets = async ({ page = 0, size = 50, query, clientId, type }) => {
   // Add type filter if provided
   if (type) {
     andArray.push({ type });
+  }
+
+  // Optional: filter by governance status (e.g. 'pending_review' for a
+  // review queue). Omitted entirely when not provided, so existing callers
+  // that don't pass status keep seeing exactly what they see today.
+  if (status) {
+    andArray.push({ status });
   }
 
   // Add query filter if provided
@@ -112,6 +128,50 @@ const deleteWidget = async (id, clientId) => {
   }
 };
 
+// Draft or previously-rejected widgets can be (re)submitted for review.
+// Anything already in-flight or already published must go through its own
+// dedicated action instead (review / publish) rather than being resubmitted.
+const submitWidgetForReview = async (id, clientId) => {
+  const widget = await findTenantWidget(id, clientId);
+  if (![WidgetStatus.DRAFT, WidgetStatus.REJECTED].includes(widget.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Widget cannot be submitted for review from status "${widget.status}"`);
+  }
+  widget.status = WidgetStatus.PENDING_REVIEW;
+  await widget.save();
+  return widget;
+};
+
+// Approve or reject a widget that's pending review. Restricted to the
+// 'reviewWidgets' right (admins) at the route level — this function still
+// enforces the status precondition so it can't be used to short-circuit the
+// workflow even if called directly.
+const reviewWidget = async (id, { action, notes }, clientId, reviewerId) => {
+  const widget = await findTenantWidget(id, clientId);
+  if (widget.status !== WidgetStatus.PENDING_REVIEW) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Widget is not pending review (current status: "${widget.status}")`);
+  }
+  widget.status = action === 'approve' ? WidgetStatus.APPROVED : WidgetStatus.REJECTED;
+  widget.review = { reviewedBy: reviewerId, reviewedAt: new Date(), notes };
+  await widget.save();
+  return widget;
+};
+
+// Only an approved widget can go live. This is the step that actually makes
+// an AI-generated widget available for use, kept separate from approval so
+// "reviewed and okay" and "is now live" stay distinct, audited events.
+const publishWidget = async (id, clientId) => {
+  const widget = await findTenantWidget(id, clientId);
+  if (widget.status !== WidgetStatus.APPROVED) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Widget must be approved before it can be published (current status: "${widget.status}")`
+    );
+  }
+  widget.status = WidgetStatus.PUBLISHED;
+  widget.publishedAt = new Date();
+  await widget.save();
+  return widget;
+};
 
 module.exports = {
   getWidgets,
@@ -119,4 +179,7 @@ module.exports = {
   updateWidget,
   updateWidgetByKey,
   deleteWidget,
+  submitWidgetForReview,
+  reviewWidget,
+  publishWidget,
 };

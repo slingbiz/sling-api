@@ -64,3 +64,20 @@ module.exports.WidgetOwnerShip = {
   PUBLIC: 'public',
   PROTECTED: 'protected',
 };
+
+// Governance workflow a widget moves through before it can be used live.
+// AI-generated widgets always start at DRAFT and must pass through
+// PENDING_REVIEW -> APPROVED -> PUBLISHED; manually created widgets may
+// skip straight to PUBLISHED at creation time as they do today.
+module.exports.WidgetStatus = {
+  DRAFT: 'draft',
+  PENDING_REVIEW: 'pending_review',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  PUBLISHED: 'published',
+};
+
+module.exports.WidgetSource = {
+  MANUAL: 'manual',
+  AI_GENERATED: 'ai_generated',
+};
