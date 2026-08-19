@@ -13,6 +13,6 @@ router.route('/pinggg2').post(setClientFE, dummyController.ping).get(dummyContro
 router.route('/widgets').post(setClientFE, widgetsController.createWidget);
 router.route('/widgets').put(setClientFE, widgetsController.updateWidget);
 router.route('/updateWidgetByKey').put(setClientFE, widgetsController.updateWidgetByKey);
-router.route('/getWidgets').post(setClientFE, widgetsController.getWidgets);
+router.route('/getWidgets').post(setClientFE, widgetsController.getPublishedWidgets);
 
 module.exports = router;

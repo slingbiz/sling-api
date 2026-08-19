@@ -1,5 +1,6 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
+const { WidgetStatus } = require('../constants/appEnums');
 
 const { widgetsService } = require('../services');
 
@@ -11,6 +12,25 @@ const getWidgets = catchAsync(async (req, res) => {
   const { query, page, size, type } = req.body;
   const { clientId } = req;
   const widgets = await widgetsService.getWidgets({ query, page, size, type, clientId });
+  res.status(httpStatus.OK).send({ widgets });
+});
+
+// Used by the public-facing frontend's widget registry fetch only (never
+// Studio). Unlike getWidgets above, this always forces status: published so
+// a draft, pending-review, or rejected AI-generated widget's metadata can
+// never leak into a live site's registry just because it shares the same
+// Widget collection as everything else.
+const getPublishedWidgets = catchAsync(async (req, res) => {
+  const { query, page, size, type } = req.body;
+  const { clientId } = req;
+  const widgets = await widgetsService.getWidgets({
+    query,
+    page,
+    size,
+    type,
+    clientId,
+    status: WidgetStatus.PUBLISHED,
+  });
   res.status(httpStatus.OK).send({ widgets });
 });
 
@@ -53,6 +73,7 @@ const publishWidget = catchAsync(async (req, res) => {
 module.exports = {
   ping,
   getWidgets,
+  getPublishedWidgets,
   createWidget,
   updateWidget,
   updateWidgetByKey,
