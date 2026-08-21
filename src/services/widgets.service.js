@@ -1,7 +1,8 @@
 const httpStatus = require('http-status');
 const { Widget } = require('../models');
 const ApiError = require('../utils/ApiError');
-const { WidgetStatus } = require('../constants/appEnums');
+const { WidgetStatus, WidgetSource } = require('../constants/appEnums');
+const githubPublishService = require('./githubPublish.service');
 
 const { getDb } = require('../utils/mongoInit');
 
@@ -159,6 +160,13 @@ const reviewWidget = async (id, { action, notes }, clientId, reviewerId) => {
 // Only an approved widget can go live. This is the step that actually makes
 // an AI-generated widget available for use, kept separate from approval so
 // "reviewed and okay" and "is now live" stay distinct, audited events.
+//
+// For AI-generated widgets, the git write happens BEFORE the DB status
+// flips to published, not after: if the commit to sling-fe fails, the
+// widget must stay "approved" (safely retriable) rather than the DB
+// claiming "published" while no file actually landed in the repo. Manual
+// widgets skip the git step entirely — their code already lives in
+// sling-fe by hand, publish is just the status flip it always was.
 const publishWidget = async (id, clientId) => {
   const widget = await findTenantWidget(id, clientId);
   if (widget.status !== WidgetStatus.APPROVED) {
@@ -167,6 +175,21 @@ const publishWidget = async (id, clientId) => {
       `Widget must be approved before it can be published (current status: "${widget.status}")`
     );
   }
+
+  if (widget.source === WidgetSource.AI_GENERATED) {
+    const otherPublishedAiWidgets = await Widget.find({
+      source: WidgetSource.AI_GENERATED,
+      status: WidgetStatus.PUBLISHED,
+      _id: { $ne: widget._id },
+    });
+
+    try {
+      await githubPublishService.publishGeneratedWidgetToRepo(widget, [...otherPublishedAiWidgets, widget]);
+    } catch (error) {
+      throw new ApiError(httpStatus.BAD_GATEWAY, `Failed to publish widget to sling-fe: ${error.message}`);
+    }
+  }
+
   widget.status = WidgetStatus.PUBLISHED;
   widget.publishedAt = new Date();
   await widget.save();
