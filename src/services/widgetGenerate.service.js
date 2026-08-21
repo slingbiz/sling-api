@@ -2,6 +2,9 @@ const axios = require('axios');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 
+const GEMINI_MODEL = 'gemini-3.0-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
 const SYSTEM_PROMPT = `You are a React widget generator for Sling CMS. Generate a single React component called PreviewComponent.
 
 RULES:
@@ -37,8 +40,8 @@ OUTPUT FORMAT — respond with ONLY a JSON object (no markdown, no code fences):
 }`;
 
 const generateWidget = async (prompt, themeConfig) => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'ANTHROPIC_API_KEY is not configured');
+  if (!process.env.GEMINI_API_KEY) {
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'GEMINI_API_KEY is not configured');
   }
 
   const themeJson = themeConfig ? JSON.stringify(themeConfig, null, 2) : '{}';
@@ -47,28 +50,27 @@ const generateWidget = async (prompt, themeConfig) => {
   let response;
   try {
     response = await axios.post(
-      'https://api.anthropic.com/v1/messages',
+      `${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`,
       {
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          maxOutputTokens: 4096,
+          temperature: 0.7,
+          responseMimeType: 'application/json',
+        },
       },
       {
-        headers: {
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
+        headers: { 'content-type': 'application/json' },
       }
     );
   } catch (error) {
-    throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed: ${error.message}`);
+    const detail = error.response?.data?.error?.message || error.message;
+    throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed: ${detail}`);
   }
 
-  let text = response.data?.content?.[0]?.text || '';
+  let text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-  // Strip markdown code fences if the LLM wrapped its response
   text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
 
   let parsed;
