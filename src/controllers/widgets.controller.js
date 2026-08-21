@@ -2,7 +2,7 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { WidgetStatus } = require('../constants/appEnums');
 
-const { widgetsService } = require('../services');
+const { widgetsService, widgetGenerateService } = require('../services');
 
 const ping = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send('pong');
@@ -70,6 +70,24 @@ const publishWidget = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ widget });
 });
 
+const generateWidget = catchAsync(async (req, res) => {
+  const { prompt, themeConfig } = req.body;
+  const generated = await widgetGenerateService.generateWidget(prompt, themeConfig);
+
+  const widget = await widgetsService.createWidget(
+    {
+      ...generated,
+      ownership: 'private',
+      source: 'ai_generated',
+      status: 'draft',
+      generationPrompt: prompt,
+    },
+    req.clientId
+  );
+
+  res.status(httpStatus.CREATED).send({ widget });
+});
+
 module.exports = {
   ping,
   getWidgets,
@@ -81,4 +99,5 @@ module.exports = {
   submitWidgetForReview,
   reviewWidget,
   publishWidget,
+  generateWidget,
 };

@@ -23,8 +23,16 @@ const publishWidget = {
   }),
 };
 
+const generateWidget = {
+  body: Joi.object().keys({
+    prompt: Joi.string().required().min(10).max(2000),
+    themeConfig: Joi.object().optional(),
+  }),
+};
+
 module.exports = {
   submitForReview,
   reviewWidget,
   publishWidget,
+  generateWidget,
 };

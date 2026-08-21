@@ -14,6 +14,8 @@ router.route('/dash/getWidgets').post(auth(), widgetsController.getWidgets);
 router.route('/getWidgets').post(auth(), widgetsController.getWidgets);
 router.route('/deleteWidget').post(auth(), widgetsController.deleteWidget);
 
+router.route('/generate').post(auth(), validate(widgetValidation.generateWidget), widgetsController.generateWidget);
+
 // Widget governance workflow: any authenticated tenant member can submit
 // their own draft for review, but only an admin (reviewWidgets right) can
 // approve/reject or publish.
