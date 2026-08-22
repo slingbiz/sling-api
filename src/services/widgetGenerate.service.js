@@ -8,33 +8,21 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 const SYSTEM_PROMPT = `Generate a React component named PreviewComponent for a CMS widget.
 Use Material-UI v4 components and icons as bare identifiers (no imports). Use makeStyles for styling.
 No imports, no exports, no window/document/fetch/eval access.
-Keep code under 80 lines. Use JSX. Be concise — inline data, minimal styles.
+Keep code VERY short — under 60 lines. Use JSX. Inline all data.
 
-Respond with ONLY valid JSON:
-{"name":"Widget Name","key":"PascalKey","description":"One line","icon":"mui_icon","type":"widget","props":[],"dependencies":{},"code":"const PreviewComponent = () => { ... };"}`;
+Return ONLY a JSON object with these fields: name, key, description, icon, type, props, dependencies, code.
+The "code" field must contain the full component as a string.`;
 
-const callGemini = async (apiKey, prompt, themeConfig) => {
-  const themeNote = themeConfig ? `\nTheme: ${JSON.stringify(themeConfig)}` : '';
-  const userPrompt = `${prompt}\nKeep code under 80 lines, be concise.${themeNote}`;
-
-  const body = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    generationConfig: {
-      maxOutputTokens: 8192,
-      temperature: 0.7,
-      responseMimeType: 'application/json',
-    },
-  });
-
+const callGemini = (apiKey, body) => {
   return new Promise((resolve, reject) => {
     const url = new URL(`${GEMINI_API_URL}?key=${apiKey}`);
+    const payload = JSON.stringify(body);
     const req = https.request(
       {
         hostname: url.hostname,
         path: url.pathname + url.search,
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
+        headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) },
       },
       (res) => {
         const chunks = [];
@@ -59,7 +47,7 @@ const callGemini = async (apiKey, prompt, themeConfig) => {
     );
     req.setTimeout(55000, () => { req.destroy(); reject(new Error('TIMEOUT')); });
     req.on('error', reject);
-    req.write(body);
+    req.write(payload);
     req.end();
   });
 };
@@ -69,9 +57,19 @@ const generateWidget = async (prompt, themeConfig) => {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'GEMINI_API_KEY is not configured');
   }
 
+  const themeNote = themeConfig ? `\nTheme palette: ${JSON.stringify(themeConfig).substring(0, 500)}` : '';
+  const userPrompt = `Create a simple widget: ${prompt}\nKeep code under 60 lines.${themeNote}`;
+
   let data;
   try {
-    data = await callGemini(process.env.GEMINI_API_KEY, prompt, themeConfig);
+    data = await callGemini(process.env.GEMINI_API_KEY, {
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      generationConfig: {
+        maxOutputTokens: 8192,
+        temperature: 0.7,
+      },
+    });
   } catch (error) {
     if (error.message === 'TIMEOUT') {
       throw new ApiError(httpStatus.GATEWAY_TIMEOUT, 'AI generation timed out. Try a simpler widget.');
@@ -80,12 +78,20 @@ const generateWidget = async (prompt, themeConfig) => {
   }
 
   const candidate = data?.candidates?.[0];
-  if (!candidate?.content?.parts?.[0]?.text) {
-    const reason = candidate?.finishReason || 'unknown';
-    throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed (${reason}). Try a different prompt.`);
+  const finishReason = candidate?.finishReason || 'unknown';
+
+  let text = '';
+  if (candidate?.content?.parts) {
+    for (const part of candidate.content.parts) {
+      if (part.text) text += part.text;
+    }
   }
 
-  let text = candidate.content.parts[0].text.trim();
+  if (!text.trim()) {
+    throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed (${finishReason}). Try a different prompt.`);
+  }
+
+  text = text.trim();
   text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -95,7 +101,10 @@ const generateWidget = async (prompt, themeConfig) => {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new ApiError(httpStatus.BAD_GATEWAY, `AI response was not valid JSON: ${text.substring(0, 200)}`);
+    throw new ApiError(
+      httpStatus.BAD_GATEWAY,
+      `AI response was not valid JSON (finishReason: ${finishReason}, length: ${text.length}): ${text.substring(0, 300)}`
+    );
   }
 
   return {
