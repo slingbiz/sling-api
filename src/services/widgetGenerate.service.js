@@ -69,15 +69,29 @@ const generateWidget = async (prompt, themeConfig) => {
     throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed: ${detail}`);
   }
 
-  let text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const candidate = response.data?.candidates?.[0];
+  if (!candidate || candidate.finishReason === 'SAFETY') {
+    throw new ApiError(httpStatus.BAD_GATEWAY, 'AI generation was blocked by safety filters. Try a different prompt.');
+  }
 
+  let text = candidate.content?.parts?.[0]?.text || '';
+  if (!text.trim()) {
+    throw new ApiError(httpStatus.BAD_GATEWAY, 'AI returned an empty response. Try a more descriptive prompt.');
+  }
+
+  text = text.trim();
   text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    text = jsonMatch[0];
+  }
 
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    throw new ApiError(httpStatus.BAD_GATEWAY, 'AI response was not valid JSON');
+    throw new ApiError(httpStatus.BAD_GATEWAY, `AI response was not valid JSON: ${text.substring(0, 200)}`);
   }
 
   return {
