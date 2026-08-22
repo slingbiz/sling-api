@@ -1,9 +1,9 @@
-const axios = require('axios');
+const https = require('https');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 
 const GEMINI_MODEL = 'gemini-3.6-flash';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_STREAM_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
 const SYSTEM_PROMPT = `You are a React widget generator for Sling CMS. Generate a single React component called PreviewComponent.
 
@@ -44,6 +44,68 @@ OUTPUT — respond with ONLY this JSON object:
   "code": "const PreviewComponent = () => { return React.createElement(Box, null, 'Hello'); };"
 }`;
 
+const streamGemini = (apiKey, body) => {
+  return new Promise((resolve, reject) => {
+    const url = `${GEMINI_STREAM_URL}&key=${apiKey}`;
+    const payload = JSON.stringify(body);
+    const parsed = new URL(url);
+
+    const req = https.request(
+      {
+        hostname: parsed.hostname,
+        path: parsed.pathname + parsed.search,
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) },
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const raw = Buffer.concat(chunks).toString('utf8');
+          if (res.statusCode >= 400) {
+            try {
+              const err = JSON.parse(raw);
+              reject(new Error(err.error?.message || `HTTP ${res.statusCode}`));
+            } catch {
+              reject(new Error(`HTTP ${res.statusCode}: ${raw.substring(0, 200)}`));
+            }
+            return;
+          }
+          const textParts = [];
+          let finishReason = null;
+          const lines = raw.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const json = line.slice(6).trim();
+            if (!json || json === '[DONE]') continue;
+            try {
+              const event = JSON.parse(json);
+              const candidate = event.candidates?.[0];
+              if (candidate?.content?.parts) {
+                for (const part of candidate.content.parts) {
+                  if (part.text) textParts.push(part.text);
+                }
+              }
+              if (candidate?.finishReason) finishReason = candidate.finishReason;
+            } catch {
+              // skip malformed SSE lines
+            }
+          }
+          resolve({ text: textParts.join(''), finishReason });
+        });
+      }
+    );
+
+    req.setTimeout(55000, () => {
+      req.destroy();
+      reject(new Error('TIMEOUT'));
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+};
+
 const generateWidget = async (prompt, themeConfig) => {
   if (!process.env.GEMINI_API_KEY) {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'GEMINI_API_KEY is not configured');
@@ -52,47 +114,36 @@ const generateWidget = async (prompt, themeConfig) => {
   const themeJson = themeConfig ? JSON.stringify(themeConfig, null, 2) : '{}';
   const systemPrompt = SYSTEM_PROMPT.replace('{themeJson}', themeJson);
 
-  let response;
+  let result;
   try {
-    response = await axios.post(
-      `${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [{ role: 'user', parts: [{ text: `${prompt}\n\nIMPORTANT: Keep the component code under 150 lines. Be concise.` }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: {
-          maxOutputTokens: 32768,
-          temperature: 0.7,
-          responseMimeType: 'application/json',
-        },
+    result = await streamGemini(process.env.GEMINI_API_KEY, {
+      contents: [{ role: 'user', parts: [{ text: `${prompt}\n\nIMPORTANT: Keep the component code under 150 lines. Be concise.` }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        maxOutputTokens: 32768,
+        temperature: 0.7,
+        responseMimeType: 'application/json',
       },
-      {
-        headers: { 'content-type': 'application/json' },
-        timeout: 60000,
-      }
-    );
+    });
   } catch (error) {
-    if (error.code === 'ECONNABORTED') {
+    if (error.message === 'TIMEOUT') {
       throw new ApiError(httpStatus.GATEWAY_TIMEOUT, 'AI generation timed out. Try a simpler widget.');
     }
-    const detail = error.response?.data?.error?.message || error.message;
-    throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed: ${detail}`);
+    throw new ApiError(httpStatus.BAD_GATEWAY, `AI generation failed: ${error.message}`);
   }
 
-  const candidate = response.data?.candidates?.[0];
-  if (!candidate || candidate.finishReason === 'SAFETY') {
-    throw new ApiError(httpStatus.BAD_GATEWAY, 'AI generation was blocked by safety filters. Try a different prompt.');
-  }
-
-  if (candidate.finishReason === 'MAX_TOKENS') {
-    throw new ApiError(httpStatus.BAD_GATEWAY, 'AI response was too long and got cut off. Try requesting a simpler widget.');
-  }
-
-  let text = candidate.content?.parts?.[0]?.text || '';
-  if (!text.trim()) {
+  if (!result.text?.trim()) {
+    if (result.finishReason === 'SAFETY') {
+      throw new ApiError(httpStatus.BAD_GATEWAY, 'AI generation was blocked by safety filters. Try a different prompt.');
+    }
     throw new ApiError(httpStatus.BAD_GATEWAY, 'AI returned an empty response. Try a more descriptive prompt.');
   }
 
-  text = text.trim();
+  if (result.finishReason === 'MAX_TOKENS') {
+    throw new ApiError(httpStatus.BAD_GATEWAY, 'AI response was too long and got cut off. Try requesting a simpler widget.');
+  }
+
+  let text = result.text.trim();
   text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
