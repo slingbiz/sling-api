@@ -2,7 +2,7 @@ const axios = require('axios');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const SYSTEM_PROMPT = `You are a React widget generator for Sling CMS. Generate a single React component called PreviewComponent.
