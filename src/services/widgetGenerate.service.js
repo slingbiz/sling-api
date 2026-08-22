@@ -55,7 +55,7 @@ const generateWidget = async (prompt, themeConfig) => {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
-          maxOutputTokens: 4096,
+          maxOutputTokens: 16384,
           temperature: 0.7,
           responseMimeType: 'application/json',
         },
