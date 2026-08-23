@@ -21,8 +21,8 @@ const ping = catchAsync(async (req, res) => {
 const getWidgets = catchAsync(async (req, res) => {
   const { query, page, size, type, status } = req.body;
   const { clientId } = req;
-  const widgets = await widgetsService.getWidgets({ query, page, size, type, clientId, status });
-  res.status(httpStatus.OK).send({ widgets });
+  const result = await widgetsService.getWidgets({ query, page, size, type, clientId, status });
+  res.status(httpStatus.OK).send(result);
 });
 
 // Used by the public-facing frontend's widget registry fetch only (never
@@ -33,7 +33,7 @@ const getWidgets = catchAsync(async (req, res) => {
 const getPublishedWidgets = catchAsync(async (req, res) => {
   const { query, page, size, type } = req.body;
   const { clientId } = req;
-  const widgets = await widgetsService.getWidgets({
+  const result = await widgetsService.getWidgets({
     query,
     page,
     size,
@@ -41,7 +41,7 @@ const getPublishedWidgets = catchAsync(async (req, res) => {
     clientId,
     status: WidgetStatus.PUBLISHED,
   });
-  res.status(httpStatus.OK).send({ widgets });
+  res.status(httpStatus.OK).send(result);
 });
 
 const createWidget = catchAsync(async (req, res) => {

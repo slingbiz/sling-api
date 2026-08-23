@@ -78,6 +78,15 @@ describe('widgets controller governance', () => {
     );
   });
 
+  test('studio getWidgets sends a flat {widgets, tc} list, not a nested object', async () => {
+    widgetsService.getWidgets.mockResolvedValueOnce({widgets: [{_id: 'a'}], tc: 9});
+    const req = httpMocks.createRequest({body: {status: 'published', page: 0, size: 8}});
+    req.clientId = 'tenant-a';
+    const res = await run(widgetsController.getWidgets, req);
+    expect(res.payloads[0]).toEqual({widgets: [{_id: 'a'}], tc: 9});
+    expect(Array.isArray(res.payloads[0].widgets)).toBe(true);
+  });
+
   test('studio getWidgets forwards status and never drops clientId', async () => {
     const req = httpMocks.createRequest({ body: { type: 'widget', status: 'pending_review' } });
     req.clientId = 'tenant-a';
