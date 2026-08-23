@@ -18,6 +18,47 @@ const policyError = (violations) => {
   return new ApiError(httpStatus.BAD_REQUEST, `Widget failed governance policy: ${first}`);
 };
 
+// Studio's editor always seeds one empty prop row. Save uses findOneAndUpdate
+// (no validators), so those rows land in Mongo. submit/publish then called
+// widget.save(), which re-validates required prop fields and 500'd in prod.
+const sanitizeWidgetProps = (props) => {
+  if (!Array.isArray(props)) {
+    return [];
+  }
+  return props.filter(
+    (prop) =>
+      prop &&
+      String(prop.name || '').trim() &&
+      String(prop.propType || '').trim() &&
+      String(prop.dataType || '').trim()
+  );
+};
+
+const persistGovernanceFields = async (widget, fields) => {
+  try {
+    const updated = await Widget.findOneAndUpdate(
+      { _id: widget._id, client_id: widget.client_id },
+      { $set: fields },
+      { new: true }
+    );
+    if (!updated) {
+      throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${widget._id}`);
+    }
+    return updated;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(httpStatus.BAD_REQUEST, `Could not update widget: ${error.message}`);
+  }
+};
+
+const runCodePolicy = (code, dependencies) => {
+  try {
+    return checkCodePolicy(code || '', dependencies);
+  } catch (error) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Widget failed governance policy: ${error.message}`);
+  }
+};
+
 const applyCodePolicy = (widgetBody = {}) => {
   if (widgetBody.code == null && !widgetBody.dependencies) {
     return { allowed: true, violations: widgetBody.policyViolations || [] };
@@ -85,6 +126,7 @@ const createWidget = async (widgetBody, clientId) => {
     ...widgetBody,
     policyViolations: policy.violations,
     client_id: clientId,
+    props: sanitizeWidgetProps(widgetBody.props),
   };
   if (nextBody.source === WidgetSource.AI_GENERATED) {
     nextBody.status = WidgetStatus.DRAFT;
@@ -186,6 +228,9 @@ const updateWidget = async (id, widgetBody, clientId) => {
     throw policyError(policy.violations);
   }
   const nextBody = widgetBody && widgetBody.code != null ? { ...widgetBody, policyViolations: policy.violations } : widgetBody;
+  if (nextBody && Object.prototype.hasOwnProperty.call(nextBody, 'props')) {
+    nextBody.props = sanitizeWidgetProps(nextBody.props);
+  }
   const widget = await Widget.findOneAndUpdate({ _id: id, client_id: clientId }, nextBody, {
     new: true,
     upsert: false,
@@ -217,6 +262,9 @@ const updateWidgetByKey = async (key, widgetBody, clientId) => {
   }
   const nextBody =
     widgetBody && widgetBody.code != null ? { ...widgetBody, policyViolations: policy.violations } : widgetBody;
+  if (nextBody && Object.prototype.hasOwnProperty.call(nextBody, 'props')) {
+    nextBody.props = sanitizeWidgetProps(nextBody.props);
+  }
   let widget;
   try {
     widget = await Widget.findOneAndUpdate(
@@ -259,14 +307,15 @@ const submitWidgetForReview = async (id, clientId) => {
   if (![WidgetStatus.DRAFT, WidgetStatus.REJECTED].includes(widget.status)) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Widget cannot be submitted for review from status "${widget.status}"`);
   }
-  const policy = checkCodePolicy(widget.code || '', widget.dependencies);
-  widget.policyViolations = policy.violations;
+  const policy = runCodePolicy(widget.code, widget.dependencies);
   if (!policy.allowed) {
     throw policyError(policy.violations);
   }
-  widget.status = WidgetStatus.PENDING_REVIEW;
-  await widget.save();
-  return widget;
+  return persistGovernanceFields(widget, {
+    status: WidgetStatus.PENDING_REVIEW,
+    policyViolations: policy.violations,
+    props: sanitizeWidgetProps(widget.props),
+  });
 };
 
 // Approve or reject a widget that's pending review. Restricted to the
@@ -278,10 +327,10 @@ const reviewWidget = async (id, { action, notes }, clientId, reviewerId) => {
   if (widget.status !== WidgetStatus.PENDING_REVIEW) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Widget is not pending review (current status: "${widget.status}")`);
   }
-  widget.status = action === 'approve' ? WidgetStatus.APPROVED : WidgetStatus.REJECTED;
-  widget.review = { reviewedBy: reviewerId, reviewedAt: new Date(), notes };
-  await widget.save();
-  return widget;
+  return persistGovernanceFields(widget, {
+    status: action === 'approve' ? WidgetStatus.APPROVED : WidgetStatus.REJECTED,
+    review: { reviewedBy: reviewerId, reviewedAt: new Date(), notes },
+  });
 };
 
 // Admins/publishers can publish from draft, pending review, or approved.
@@ -308,8 +357,7 @@ const publishWidget = async (id, clientId) => {
     );
   }
 
-  const policy = checkCodePolicy(widget.code || '', widget.dependencies);
-  widget.policyViolations = policy.violations;
+  const policy = runCodePolicy(widget.code, widget.dependencies);
   if (!policy.allowed) {
     throw policyError(policy.violations);
   }
@@ -329,10 +377,12 @@ const publishWidget = async (id, clientId) => {
     }
   }
 
-  widget.status = WidgetStatus.PUBLISHED;
-  widget.publishedAt = new Date();
-  await widget.save();
-  return widget;
+  return persistGovernanceFields(widget, {
+    status: WidgetStatus.PUBLISHED,
+    publishedAt: new Date(),
+    policyViolations: policy.violations,
+    props: sanitizeWidgetProps(widget.props),
+  });
 };
 
 module.exports = {

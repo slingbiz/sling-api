@@ -320,4 +320,48 @@ describe('widgets governance', () => {
     expect(second.version).toBe(2);
     expect(store.filter((item) => item.key === 'LoginForm' && item.client_id === 'tenant-a')).toHaveLength(1);
   });
+
+  test('a valid draft submits to pending_review', async () => {
+    const draft = await widgetsService.createWidget(baseWidget({ key: 'ReadyDraft' }), 'tenant-a');
+    const submitted = await widgetsService.submitWidgetForReview(draft._id, 'tenant-a');
+    expect(submitted.status).toBe(WidgetStatus.PENDING_REVIEW);
+  });
+
+  test('submit-for-review does not 500 when draft has empty placeholder props', async () => {
+    const draft = await widgetsService.createWidget(baseWidget({ key: 'EmptyPropsDraft' }), 'tenant-a');
+    draft.props = [{ name: '', propType: '', dataType: '', default: '' }];
+    draft.save = jest.fn(async () => {
+      const err = new Error('Widget validation failed: props.0.name: Path `name` is required.');
+      err.name = 'ValidationError';
+      throw err;
+    });
+
+    const submitted = await widgetsService.submitWidgetForReview(draft._id, 'tenant-a');
+    expect(submitted.status).toBe(WidgetStatus.PENDING_REVIEW);
+    expect(draft.save).not.toHaveBeenCalled();
+  });
+
+  test('save then submit strips empty prop rows instead of throwing', async () => {
+    const draft = await widgetsService.createWidget(baseWidget({ key: 'SaveThenSubmit' }), 'tenant-a');
+    await widgetsService.updateWidget(
+      draft._id,
+      { props: [{ name: '', propType: '', dataType: '', default: '' }], code: safeCode },
+      'tenant-a'
+    );
+    const submitted = await widgetsService.submitWidgetForReview(draft._id, 'tenant-a');
+    expect(submitted.status).toBe(WidgetStatus.PENDING_REVIEW);
+    expect(submitted.props || []).toEqual([]);
+  });
+
+  test('wrong status is a 400, not an uncaught throw', async () => {
+    const draft = await widgetsService.createWidget(baseWidget({ key: 'AlreadyPending' }), 'tenant-a');
+    draft.status = WidgetStatus.PENDING_REVIEW;
+    try {
+      await widgetsService.submitWidgetForReview(draft._id, 'tenant-a');
+      throw new Error('expected submit to reject');
+    } catch (error) {
+      expect(error.statusCode).toBe(400);
+      expect(error.message).toMatch(/cannot be submitted/i);
+    }
+  });
 });

@@ -138,4 +138,14 @@ describe('widgets controller governance', () => {
     await run(widgetsController.publishWidget, publishReq);
     expect(auditService.write).toHaveBeenCalledWith(expect.objectContaining({ action: 'widget.publish', clientId: 'tenant-a' }));
   });
+
+  test('submit still returns 200 if audit write fails', async () => {
+    auditService.write.mockRejectedValueOnce(new Error('audit down'));
+    const submitReq = httpMocks.createRequest({ params: { widgetId: 'w1' } });
+    submitReq.clientId = 'tenant-a';
+    submitReq.user = { id: 'user-a' };
+    const res = await run(widgetsController.submitWidgetForReview, submitReq);
+    expect(res.statusCode).toBe(200);
+    expect(res.payloads[0].widget.status).toBe('pending_review');
+  });
 });

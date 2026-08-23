@@ -4,15 +4,20 @@ const { WidgetStatus } = require('../constants/appEnums');
 
 const { widgetsService, widgetGenerateService, themeService, auditService } = require('../services');
 
-const writeAudit = (req, action, resourceType, resourceId, metadata) =>
-  auditService.write({
-    clientId: req.clientId,
-    actorUserId: req.user && req.user.id,
-    action,
-    resourceType,
-    resourceId,
-    metadata,
-  });
+const writeAudit = async (req, action, resourceType, resourceId, metadata) => {
+  try {
+    await auditService.write({
+      clientId: req.clientId,
+      actorUserId: req.user && req.user.id,
+      action,
+      resourceType,
+      resourceId,
+      metadata,
+    });
+  } catch (error) {
+    // A successful widget write must not become a 500 because audit failed.
+  }
+};
 
 const ping = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send('pong');
