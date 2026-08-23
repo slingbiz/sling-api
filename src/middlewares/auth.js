@@ -19,7 +19,10 @@ const verifyCallback = (req, resolve, reject, requiredRights) => async (err, use
   const clientId = req.headers['client'] || req.headers['Client']; // For Frontend requests.
   const licenseKey = req.headers['license'] || req.headers['License']; // For Frontend requests.
 
-  req.clientId = user.email || clientId || 'demo-id';
+  req.clientId = user.email || clientId;
+  if (!req.clientId) {
+    return reject(new ApiError(httpStatus.BAD_REQUEST, 'clientId is required'));
+  }
 
   if (requiredRights.length) {
     const userRights = roleRights.get(user.role);

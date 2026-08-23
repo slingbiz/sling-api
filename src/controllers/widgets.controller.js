@@ -2,16 +2,26 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { WidgetStatus } = require('../constants/appEnums');
 
-const { widgetsService, widgetGenerateService, themeService } = require('../services');
+const { widgetsService, widgetGenerateService, themeService, auditService } = require('../services');
+
+const writeAudit = (req, action, resourceType, resourceId, metadata) =>
+  auditService.write({
+    clientId: req.clientId,
+    actorUserId: req.user && req.user.id,
+    action,
+    resourceType,
+    resourceId,
+    metadata,
+  });
 
 const ping = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send('pong');
 });
 
 const getWidgets = catchAsync(async (req, res) => {
-  const { query, page, size, type } = req.body;
+  const { query, page, size, type, status } = req.body;
   const { clientId } = req;
-  const widgets = await widgetsService.getWidgets({ query, page, size, type, clientId });
+  const widgets = await widgetsService.getWidgets({ query, page, size, type, clientId, status });
   res.status(httpStatus.OK).send({ widgets });
 });
 
@@ -36,6 +46,7 @@ const getPublishedWidgets = catchAsync(async (req, res) => {
 
 const createWidget = catchAsync(async (req, res) => {
   const widget = await widgetsService.createWidget(req.body, req.clientId);
+  await writeAudit(req, 'widget.save', 'widget', widget._id, { key: widget.key, source: widget.source });
   res.status(httpStatus.CREATED).send({ widget });
 });
 
@@ -56,17 +67,23 @@ const deleteWidget = catchAsync(async (req, res) => {
 
 const submitWidgetForReview = catchAsync(async (req, res) => {
   const widget = await widgetsService.submitWidgetForReview(req.params.widgetId, req.clientId);
+  await writeAudit(req, 'widget.submit_review', 'widget', widget._id, { key: widget.key });
   res.status(httpStatus.OK).send({ widget });
 });
 
 const reviewWidget = catchAsync(async (req, res) => {
   const { action, notes } = req.body;
   const widget = await widgetsService.reviewWidget(req.params.widgetId, { action, notes }, req.clientId, req.user.id);
+  await writeAudit(req, action === 'approve' ? 'widget.approve' : 'widget.reject', 'widget', widget._id, {
+    key: widget.key,
+    notes,
+  });
   res.status(httpStatus.OK).send({ widget });
 });
 
 const publishWidget = catchAsync(async (req, res) => {
   const widget = await widgetsService.publishWidget(req.params.widgetId, req.clientId);
+  await writeAudit(req, 'widget.publish', 'widget', widget._id, { key: widget.key });
   res.status(httpStatus.OK).send({ widget });
 });
 
@@ -85,6 +102,9 @@ const generateWidget = catchAsync(async (req, res) => {
     },
     req.clientId
   );
+
+  await writeAudit(req, 'widget.generate', 'widget', widget._id, { key: widget.key });
+  await writeAudit(req, 'widget.save', 'widget', widget._id, { key: widget.key, source: widget.source });
 
   res.status(httpStatus.CREATED).send({ widget });
 });

@@ -9,3 +9,4 @@ module.exports.widgetsService = require('./widgets.service');
 module.exports.widgetGenerateService = require('./widgetGenerate.service');
 module.exports.themeService = require('./theme.service');
 module.exports.pageRoutesService = require('./pageRoutes.service');
+module.exports.auditService = require('./audit.service');

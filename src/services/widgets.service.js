@@ -3,10 +3,31 @@ const { Widget } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { WidgetStatus, WidgetSource } = require('../constants/appEnums');
 const githubPublishService = require('./githubPublish.service');
+const { checkCodePolicy } = require('./codePolicy.service');
 
 const { getDb } = require('../utils/mongoInit');
 
+const requireClientId = (clientId) => {
+  if (!clientId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'clientId is required');
+  }
+};
+
+const policyError = (violations) => {
+  const first = (violations && violations[0] && violations[0].message) || 'code failed governance policy';
+  return new ApiError(httpStatus.BAD_REQUEST, `Widget failed governance policy: ${first}`);
+};
+
+const applyCodePolicy = (widgetBody = {}) => {
+  if (widgetBody.code == null && !widgetBody.dependencies) {
+    return { allowed: true, violations: widgetBody.policyViolations || [] };
+  }
+  const policy = checkCodePolicy(widgetBody.code || '', widgetBody.dependencies);
+  return policy;
+};
+
 const findTenantWidget = async (id, clientId) => {
+  requireClientId(clientId);
   const widget = await Widget.findOne({ _id: id, client_id: clientId });
   if (!widget) {
     throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${id}`);
@@ -54,12 +75,26 @@ const resolveWidgetKey = async (widgetBody, clientId) => {
 };
 
 const createWidget = async (widgetBody, clientId) => {
-  const { key, existingId } = await resolveWidgetKey(widgetBody, clientId);
+  requireClientId(clientId);
+  const incomingStatus = widgetBody.status;
+  const policy = applyCodePolicy(widgetBody);
+  if (!policy.allowed && incomingStatus === WidgetStatus.PUBLISHED) {
+    throw policyError(policy.violations);
+  }
+  const nextBody = {
+    ...widgetBody,
+    policyViolations: policy.violations,
+    client_id: clientId,
+  };
+  if (nextBody.source === WidgetSource.AI_GENERATED) {
+    nextBody.status = WidgetStatus.DRAFT;
+  }
+  const { key, existingId } = await resolveWidgetKey(nextBody, clientId);
   try {
     if (existingId) {
       const widget = await Widget.findOneAndUpdate(
         { _id: existingId, client_id: clientId },
-        { ...widgetBody, key, client_id: clientId },
+        { ...nextBody, key, client_id: clientId },
         { new: true }
       );
       if (!widget) {
@@ -67,7 +102,7 @@ const createWidget = async (widgetBody, clientId) => {
       }
       return widget;
     }
-    return await Widget.create({ ...widgetBody, key, client_id: clientId });
+    return await Widget.create({ ...nextBody, key, client_id: clientId });
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
@@ -80,6 +115,7 @@ const createWidget = async (widgetBody, clientId) => {
 // };
 
 const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }) => {
+  requireClientId(clientId);
   const db = getDb();
   const skip = page * size;
   const andArray = [];
@@ -126,14 +162,23 @@ const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }
 };
 
 const updateWidget = async (id, widgetBody, clientId) => {
-  const widget = await Widget.findByIdAndUpdate(
-    id,
-    widgetBody,
-    { new: true, upsert: true } // new: true returns the updated document, upsert: true creates a new document if none exists
-  );
+  requireClientId(clientId);
+  if (widgetBody && widgetBody.status === WidgetStatus.PUBLISHED) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Widget must be approved before it can be published');
+  }
+  const existing = await findTenantWidget(id, clientId);
+  const policy = applyCodePolicy(widgetBody || {});
+  if (!policy.allowed && existing.status === WidgetStatus.PUBLISHED) {
+    throw policyError(policy.violations);
+  }
+  const nextBody = widgetBody && widgetBody.code != null ? { ...widgetBody, policyViolations: policy.violations } : widgetBody;
+  const widget = await Widget.findOneAndUpdate({ _id: id, client_id: clientId }, nextBody, {
+    new: true,
+    upsert: false,
+  });
 
   if (!widget) {
-    throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong ${widget}`);
+    throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${id}`);
   }
   try {
     const widgets = await getWidgets({ type: widget.type, clientId });
@@ -144,12 +189,26 @@ const updateWidget = async (id, widgetBody, clientId) => {
 };
 
 const updateWidgetByKey = async (key, widgetBody, clientId) => {
+  requireClientId(clientId);
+  if (widgetBody && widgetBody.status === WidgetStatus.PUBLISHED) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Widget must be approved before it can be published');
+  }
+  const existing = await Widget.findOne({ key, client_id: clientId });
+  if (!existing) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong in updating the Widget with Key ${key}`);
+  }
+  const policy = applyCodePolicy(widgetBody || {});
+  if (!policy.allowed && existing.status === WidgetStatus.PUBLISHED) {
+    throw policyError(policy.violations);
+  }
+  const nextBody =
+    widgetBody && widgetBody.code != null ? { ...widgetBody, policyViolations: policy.violations } : widgetBody;
   let widget;
   try {
     widget = await Widget.findOneAndUpdate(
       { key, client_id: clientId },
-      { $set: { ...widgetBody } },
-      { new: true, upsert: false } // new: true returns the updated document, upsert: true creates a new document if none exists
+      { $set: { ...nextBody } },
+      { new: true, upsert: false }
     );
   } catch (err) {
     throw new ApiError(
@@ -165,9 +224,10 @@ const updateWidgetByKey = async (key, widgetBody, clientId) => {
 };
 
 const deleteWidget = async (id, clientId) => {
-  const widget = await Widget.findByIdAndDelete(id);
+  requireClientId(clientId);
+  const widget = await Widget.findOneAndDelete({ _id: id, client_id: clientId });
   if (!widget) {
-    throw new ApiError(httpStatus.BAD_REQUEST, `Widget with id ${id} not found`);
+    throw new ApiError(httpStatus.NOT_FOUND, `Widget with id ${id} not found`);
   }
   try {
     const widgets = await getWidgets({ type: widget.type, clientId });
@@ -184,6 +244,11 @@ const submitWidgetForReview = async (id, clientId) => {
   const widget = await findTenantWidget(id, clientId);
   if (![WidgetStatus.DRAFT, WidgetStatus.REJECTED].includes(widget.status)) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Widget cannot be submitted for review from status "${widget.status}"`);
+  }
+  const policy = checkCodePolicy(widget.code || '', widget.dependencies);
+  widget.policyViolations = policy.violations;
+  if (!policy.allowed) {
+    throw policyError(policy.violations);
   }
   widget.status = WidgetStatus.PENDING_REVIEW;
   await widget.save();
@@ -224,10 +289,17 @@ const publishWidget = async (id, clientId) => {
     );
   }
 
+  const policy = checkCodePolicy(widget.code || '', widget.dependencies);
+  widget.policyViolations = policy.violations;
+  if (!policy.allowed) {
+    throw policyError(policy.violations);
+  }
+
   if (widget.source === WidgetSource.AI_GENERATED) {
     const otherPublishedAiWidgets = await Widget.find({
       source: WidgetSource.AI_GENERATED,
       status: WidgetStatus.PUBLISHED,
+      client_id: clientId,
       _id: { $ne: widget._id },
     });
 

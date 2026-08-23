@@ -12,8 +12,10 @@ const { generateMockProducts } = require('./mockProducts.service');
  * @param userId
  * @returns {Promise<*|number>}
  */
-const getLayout = async ({ clientId = 'demo-id' }) => {
-  // Get Db
+const getLayout = async ({ clientId }) => {
+  if (!clientId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'clientId is required');
+  }
   const db = getDb();
   let layoutConfig = {};
 
