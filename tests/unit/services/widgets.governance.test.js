@@ -5,8 +5,20 @@ const nextId = () => `w${store.length + 1}${Date.now().toString(36)}`;
 
 const matches = (doc, query = {}) => {
   return Object.entries(query).every(([key, value]) => {
-    if (value && typeof value === 'object' && !Array.isArray(value) && value.$ne != null) {
-      return String(doc[key]) !== String(value.$ne);
+    if (key === '$or' && Array.isArray(value)) {
+      return value.some((clause) => matches(doc, clause));
+    }
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      if (value.$ne != null) {
+        return String(doc[key]) !== String(value.$ne);
+      }
+      if (Object.prototype.hasOwnProperty.call(value, '$exists')) {
+        const present = Object.prototype.hasOwnProperty.call(doc, key) && doc[key] !== undefined;
+        return value.$exists ? present : !present;
+      }
+    }
+    if (value === null) {
+      return doc[key] == null;
     }
     return String(doc[key]) === String(value);
   });
@@ -217,6 +229,28 @@ describe('widgets governance', () => {
 
     draft.status = WidgetStatus.REJECTED;
     await expect(widgetsService.publishWidget(draft._id, 'tenant-a')).rejects.toThrow(/approved/i);
+  });
+
+  test('published list includes pre-governance widgets that have no status', async () => {
+    store.push({
+      _id: 'legacy-live',
+      name: 'LegacyLive',
+      key: 'LegacyLive',
+      description: 'Created before governance',
+      ownership: 'private',
+      type: 'widget',
+      client_id: 'tenant-a',
+    });
+    await widgetsService.createWidget(baseWidget({ key: 'DraftA', status: WidgetStatus.DRAFT }), 'tenant-a');
+
+    const listed = await widgetsService.getWidgets({
+      clientId: 'tenant-a',
+      status: WidgetStatus.PUBLISHED,
+    });
+
+    const keys = listed.widgets.map((widget) => widget.key);
+    expect(keys).toContain('LegacyLive');
+    expect(keys).not.toContain('DraftA');
   });
 
   test('storefront registry only returns published widgets for that clientId', async () => {

@@ -130,8 +130,18 @@ const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }
   // Optional: filter by governance status (e.g. 'pending_review' for a
   // review queue). Omitted entirely when not provided, so existing callers
   // that don't pass status keep seeing exactly what they see today.
+  //
+  // Pre-governance widgets have no status (or empty/null). Those are live,
+  // so "published" includes them. Other statuses stay an exact match so
+  // draft / review queues never pick up legacy records.
   if (status) {
-    andArray.push({ status });
+    if (status === WidgetStatus.PUBLISHED) {
+      andArray.push({
+        $or: [{ status: WidgetStatus.PUBLISHED }, { status: { $exists: false } }, { status: null }, { status: '' }],
+      });
+    } else {
+      andArray.push({ status });
+    }
   }
 
   // Add query filter if provided
