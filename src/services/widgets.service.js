@@ -14,14 +14,62 @@ const findTenantWidget = async (id, clientId) => {
   return widget;
 };
 
-const createWidget = async (widgetBody, clientId) => {
-  if (await Widget.isKeyTaken(widgetBody.key, widgetBody.type, clientId)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, `Widget Key already taken, Key: ${widgetBody.key}`);
+const sanitizeWidgetKey = (raw) => {
+  const cleaned = String(raw || 'Widget')
+    .replace(/[^A-Za-z0-9_]/g, '')
+    .replace(/^[0-9]/, 'W$&');
+  return cleaned || 'Widget';
+};
+
+// AI retries reuse the same key (e.g. LoginForm). For this tenant only:
+// update the existing AI draft, otherwise suffix so a published/manual
+// widget is never overwritten and other tenants are never touched.
+const resolveWidgetKey = async (widgetBody, clientId) => {
+  const type = widgetBody.type || 'widget';
+  const base = sanitizeWidgetKey(widgetBody.key);
+  const existing = await Widget.findOne({ key: base, client_id: clientId, type });
+
+  if (!existing) {
+    return { key: base };
   }
+
+  const isAiDraft =
+    widgetBody.source === WidgetSource.AI_GENERATED &&
+    existing.source === WidgetSource.AI_GENERATED &&
+    existing.status === WidgetStatus.DRAFT;
+
+  if (isAiDraft) {
+    return { key: base, existingId: existing._id };
+  }
+
+  for (let i = 2; i < 200; i += 1) {
+    const candidate = `${base}${i}`;
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await Widget.isKeyTaken(candidate, type, clientId))) {
+      return { key: candidate };
+    }
+  }
+
+  return { key: `${base}_${Date.now().toString(36)}` };
+};
+
+const createWidget = async (widgetBody, clientId) => {
+  const { key, existingId } = await resolveWidgetKey(widgetBody, clientId);
   try {
-    const widget = await Widget.create({ ...widgetBody, client_id: clientId });
-    return widget;
+    if (existingId) {
+      const widget = await Widget.findOneAndUpdate(
+        { _id: existingId, client_id: clientId },
+        { ...widgetBody, key, client_id: clientId },
+        { new: true }
+      );
+      if (!widget) {
+        throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${existingId}`);
+      }
+      return widget;
+    }
+    return await Widget.create({ ...widgetBody, key, client_id: clientId });
   } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
   }
 };

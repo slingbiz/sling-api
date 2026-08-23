@@ -8,7 +8,9 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 const SYSTEM_PROMPT = `Generate a React component named PreviewComponent for a CMS widget.
 Use Material-UI v4 components and icons as bare identifiers (no imports). Use makeStyles for styling.
 No imports, no exports, no window/document/fetch/eval access.
-Keep code VERY short — under 60 lines. Use JSX. Inline all data.
+Keep code short — under 80 lines. Use JSX. Inline all data.
+Brand primary color is #ff9800 (Sling orange), never default MUI blue.
+Forms (login, signup, newsletter) MUST include labeled outlined TextFields, a contained primary Button, and padding. Never return an empty box.
 
 Return ONLY a JSON object with these fields: name, key, description, icon, type, props, dependencies, code.
 The "code" field must contain the full component as a string.`;
@@ -57,8 +59,10 @@ const generateWidget = async (prompt, themeConfig) => {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'GEMINI_API_KEY is not configured');
   }
 
-  const themeNote = themeConfig ? `\nTheme palette: ${JSON.stringify(themeConfig).substring(0, 500)}` : '';
-  const userPrompt = `Create a simple widget: ${prompt}\nKeep code under 60 lines.${themeNote}`;
+  const themeNote = `\nTheme palette: ${JSON.stringify(
+    themeConfig || {palette: {primary: {main: '#ff9800'}, secondary: {main: '#ff9387'}}}
+  ).substring(0, 500)}`;
+  const userPrompt = `Create a simple widget: ${prompt}\nKeep code under 80 lines. Use Sling orange (#ff9800) as the primary color.${themeNote}`;
 
   let data;
   try {
