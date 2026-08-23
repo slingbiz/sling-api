@@ -268,4 +268,18 @@ describe('widgets governance', () => {
     draft.status = WidgetStatus.APPROVED;
     await expect(widgetsService.publishWidget(draft._id, 'tenant-a')).rejects.toThrow(/policy|eval|not permitted/i);
   });
+
+  test('regenerating an AI draft bumps version instead of creating a second widget', async () => {
+    const first = await widgetsService.createWidget(baseWidget({ key: 'LoginForm' }), 'tenant-a');
+    expect(first.version).toBe(1);
+
+    const second = await widgetsService.createWidget(
+      baseWidget({ key: 'LoginForm', description: 'Login form v2' }),
+      'tenant-a',
+    );
+
+    expect(second._id).toBe(first._id);
+    expect(second.version).toBe(2);
+    expect(store.filter((item) => item.key === 'LoginForm' && item.client_id === 'tenant-a')).toHaveLength(1);
+  });
 });

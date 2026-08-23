@@ -134,6 +134,11 @@ const widgetSchema = mongoose.Schema(
     publishedAt: {
       type: Date,
     },
+    version: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
   },
   {
     timestamps: true,

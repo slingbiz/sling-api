@@ -92,9 +92,11 @@ const createWidget = async (widgetBody, clientId) => {
   const { key, existingId } = await resolveWidgetKey(nextBody, clientId);
   try {
     if (existingId) {
+      const existing = await Widget.findOne({ _id: existingId, client_id: clientId });
+      const version = ((existing && existing.version) || 1) + 1;
       const widget = await Widget.findOneAndUpdate(
         { _id: existingId, client_id: clientId },
-        { ...nextBody, key, client_id: clientId },
+        { ...nextBody, key, client_id: clientId, version },
         { new: true }
       );
       if (!widget) {
@@ -102,7 +104,7 @@ const createWidget = async (widgetBody, clientId) => {
       }
       return widget;
     }
-    return await Widget.create({ ...nextBody, key, client_id: clientId });
+    return await Widget.create({ ...nextBody, key, client_id: clientId, version: nextBody.version || 1 });
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
