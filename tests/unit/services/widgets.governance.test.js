@@ -220,15 +220,19 @@ describe('widgets governance', () => {
     expect(store.find((item) => item._id === widget._id).status).toBe(WidgetStatus.DRAFT);
   });
 
-  test('publish rejects draft, pending, and rejected widgets', async () => {
+  test('admin can publish a draft or pending widget; rejected still cannot go live', async () => {
     const draft = await widgetsService.createWidget(baseWidget({ key: 'StillDraft' }), 'tenant-a');
-    await expect(widgetsService.publishWidget(draft._id, 'tenant-a')).rejects.toThrow(/approved/i);
+    const live = await widgetsService.publishWidget(draft._id, 'tenant-a');
+    expect(live.status).toBe(WidgetStatus.PUBLISHED);
 
-    draft.status = WidgetStatus.PENDING_REVIEW;
-    await expect(widgetsService.publishWidget(draft._id, 'tenant-a')).rejects.toThrow(/approved/i);
+    const pending = await widgetsService.createWidget(baseWidget({ key: 'StillPending' }), 'tenant-a');
+    pending.status = WidgetStatus.PENDING_REVIEW;
+    const fromQueue = await widgetsService.publishWidget(pending._id, 'tenant-a');
+    expect(fromQueue.status).toBe(WidgetStatus.PUBLISHED);
 
-    draft.status = WidgetStatus.REJECTED;
-    await expect(widgetsService.publishWidget(draft._id, 'tenant-a')).rejects.toThrow(/approved/i);
+    const rejected = await widgetsService.createWidget(baseWidget({ key: 'StillRejected' }), 'tenant-a');
+    rejected.status = WidgetStatus.REJECTED;
+    await expect(widgetsService.publishWidget(rejected._id, 'tenant-a')).rejects.toThrow(/cannot be published/i);
   });
 
   test('published list includes pre-governance widgets that have no status', async () => {

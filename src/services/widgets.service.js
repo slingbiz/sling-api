@@ -282,9 +282,8 @@ const reviewWidget = async (id, { action, notes }, clientId, reviewerId) => {
   return widget;
 };
 
-// Only an approved widget can go live. This is the step that actually makes
-// an AI-generated widget available for use, kept separate from approval so
-// "reviewed and okay" and "is now live" stay distinct, audited events.
+// Admins/publishers can publish from draft, pending review, or approved.
+// Rejected widgets must be edited and resubmitted first.
 //
 // For AI-generated widgets, the git write happens BEFORE the DB status
 // flips to published, not after: if the commit to sling-fe fails, the
@@ -292,12 +291,18 @@ const reviewWidget = async (id, { action, notes }, clientId, reviewerId) => {
 // claiming "published" while no file actually landed in the repo. Manual
 // widgets skip the git step entirely — their code already lives in
 // sling-fe by hand, publish is just the status flip it always was.
+const PUBLISHABLE_STATUSES = [
+  WidgetStatus.DRAFT,
+  WidgetStatus.PENDING_REVIEW,
+  WidgetStatus.APPROVED,
+];
+
 const publishWidget = async (id, clientId) => {
   const widget = await findTenantWidget(id, clientId);
-  if (widget.status !== WidgetStatus.APPROVED) {
+  if (!PUBLISHABLE_STATUSES.includes(widget.status)) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
-      `Widget must be approved before it can be published (current status: "${widget.status}")`
+      `Widget cannot be published from status "${widget.status}"`
     );
   }
 
