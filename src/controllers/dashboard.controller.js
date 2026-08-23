@@ -1,8 +1,8 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 
-const initConfigData = require('../constants/initConfig');
 const clientService = require('../services/client.service');
+const themeService = require('../services/theme.service');
 
 const ping = catchAsync(async (req, res) => {
   // await userService.deleteUserById(req.params.userId);
@@ -11,8 +11,11 @@ const ping = catchAsync(async (req, res) => {
 
 const initConfig = catchAsync(async (req, res) => {
   const { clientId } = req;
-  const layoutConfig = await clientService.getInitConfig({ clientId });
-  res.status(httpStatus.OK).send({ initConfigData, layoutConfig });
+  const [layoutConfig, tenantConfig] = await Promise.all([
+    clientService.getInitConfig({ clientId }),
+    themeService.getTheme(clientId),
+  ]);
+  res.status(httpStatus.OK).send({ initConfigData: tenantConfig, layoutConfig });
 });
 
 const getTemplates = catchAsync(async (req, res) => {
@@ -41,8 +44,9 @@ const getInitProps = catchAsync(async (req, res) => {
   const apiResponse = await clientService.getSSRApiRes({ asPath, query, pathname, clientId });
   // get RouteConstants with global constants
   const routeConstants = await clientService.getRouteConstants();
+  const tenantConfig = await themeService.getTheme(clientId);
 
-  res.status(httpStatus.OK).send({ initConfigData, layoutConfig, routeConstants, apiResponse });
+  res.status(httpStatus.OK).send({ initConfigData: tenantConfig, layoutConfig, routeConstants, apiResponse });
 });
 
 const setConfig = catchAsync(async (req, res) => {

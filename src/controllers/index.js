@@ -6,3 +6,4 @@ module.exports.inviteController = require('./invite.controller');
 module.exports.widgetsController = require('./widgets.controller');
 module.exports.mediaController = require('./media.controller');
 module.exports.pageRoutesController = require('./pageRoutes.controller');
+module.exports.themeController = require('./theme.controller');

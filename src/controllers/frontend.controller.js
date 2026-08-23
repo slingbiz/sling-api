@@ -1,8 +1,8 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 
-const initConfigData = require('../constants/initConfig');
 const frontendService = require('../services/frontend.service');
+const themeService = require('../services/theme.service');
 const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 
 const ping = catchAsync(async (req, res) => {
@@ -17,11 +17,12 @@ const ping = catchAsync(async (req, res) => {
 const getInitProps = catchAsync(async (req, res) => {
   const { pathname, query, asPath } = req.body;
   const { clientId } = req;
+  const tenantConfig = await themeService.getTheme(clientId);
   if (!GLOBAL_SLING_HANDLER.includes(pathname)) {
     console.info('[getInitProps] Not a part of global sling handler. - ', asPath);
     res
       .status(httpStatus.OK)
-      .send({ initConfig: initConfigData, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
+      .send({ initConfig: tenantConfig, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
     return;
   }
 
@@ -36,7 +37,7 @@ const getInitProps = catchAsync(async (req, res) => {
     console.log('[getInitProps] No matching route found in Global Sling Handler. - ', asPath);
     res
       .status(httpStatus.OK)
-      .send({ initConfig: initConfigData, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
+      .send({ initConfig: tenantConfig, layoutConfig: {}, routeConstants: [], apiResponse: {}, pageTemplate: '' });
     return;
   }
   const { page_template: pageTemplate } = matchingRoute;
@@ -48,7 +49,7 @@ const getInitProps = catchAsync(async (req, res) => {
   // get RouteConstants with global constants
   const routeConstants = await frontendService.getRouteConstants();
 
-  res.status(httpStatus.OK).send({ initConfig: initConfigData, layoutConfig, routeConstants, apiResponse, pageTemplate });
+  res.status(httpStatus.OK).send({ initConfig: tenantConfig, layoutConfig, routeConstants, apiResponse, pageTemplate });
 });
 
 module.exports = {

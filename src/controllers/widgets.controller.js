@@ -2,7 +2,7 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { WidgetStatus } = require('../constants/appEnums');
 
-const { widgetsService, widgetGenerateService } = require('../services');
+const { widgetsService, widgetGenerateService, themeService } = require('../services');
 
 const ping = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send('pong');
@@ -72,7 +72,8 @@ const publishWidget = catchAsync(async (req, res) => {
 
 const generateWidget = catchAsync(async (req, res) => {
   const { prompt, themeConfig } = req.body;
-  const generated = await widgetGenerateService.generateWidget(prompt, themeConfig);
+  const resolvedTheme = themeConfig || (await themeService.getTheme(req.clientId)).theme;
+  const generated = await widgetGenerateService.generateWidget(prompt, resolvedTheme);
 
   const widget = await widgetsService.createWidget(
     {

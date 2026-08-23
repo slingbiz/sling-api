@@ -8,6 +8,7 @@ const widgetsRoute = require('./widgets.route');
 const mediaRoute = require('./media.route');
 const pageRoutes = require('./pageRoutes.route');
 const frontendRoute = require('./frontend.route');
+const themeRoute = require('./theme.route');
 const docsRoute = require('./docs.route');
 const inviteRoute = require('./invite.route');
 const config = require('../../config/config');
@@ -54,6 +55,10 @@ const defaultRoutes = [
   {
     path: '/company',
     route: companyRoute,
+  },
+  {
+    path: '/theme',
+    route: themeRoute,
   },
 ];
 

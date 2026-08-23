@@ -9,7 +9,7 @@ const SYSTEM_PROMPT = `Generate a React component named PreviewComponent for a C
 Use Material-UI v4 components and icons as bare identifiers (no imports). Use makeStyles for styling.
 No imports, no exports, no window/document/fetch/eval access.
 Keep code short — under 80 lines. Use JSX. Inline all data.
-Brand primary color is #ff9800 (Sling orange), never default MUI blue.
+Use theme.palette for colors. If a tenant theme palette is provided, use it.
 Forms (login, signup, newsletter) MUST include labeled outlined TextFields, a contained primary Button, and padding. Never return an empty box.
 
 Return ONLY a JSON object with these fields: name, key, description, icon, type, props, dependencies, code.
@@ -54,15 +54,20 @@ const callGemini = (apiKey, body) => {
   });
 };
 
+const buildThemeInstruction = (prompt, themeConfig) => {
+  const themeNote = themeConfig
+    ? `\nUse this tenant theme palette: ${JSON.stringify(themeConfig).substring(0, 500)}`
+    : '\nUse the provided theme palette if any; otherwise Material-UI defaults.';
+  const userPrompt = `Create a simple widget: ${prompt}\nKeep code under 80 lines.${themeNote}`;
+  return { systemPrompt: SYSTEM_PROMPT, userPrompt };
+};
+
 const generateWidget = async (prompt, themeConfig) => {
   if (!process.env.GEMINI_API_KEY) {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'GEMINI_API_KEY is not configured');
   }
 
-  const themeNote = `\nTheme palette: ${JSON.stringify(
-    themeConfig || {palette: {primary: {main: '#ff9800'}, secondary: {main: '#ff9387'}}}
-  ).substring(0, 500)}`;
-  const userPrompt = `Create a simple widget: ${prompt}\nKeep code under 80 lines. Use Sling orange (#ff9800) as the primary color.${themeNote}`;
+  const { userPrompt } = buildThemeInstruction(prompt, themeConfig);
 
   let data;
   try {
@@ -125,4 +130,5 @@ const generateWidget = async (prompt, themeConfig) => {
 
 module.exports = {
   generateWidget,
+  buildThemeInstruction,
 };
