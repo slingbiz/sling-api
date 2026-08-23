@@ -119,7 +119,9 @@ const createWidget = async (widgetBody, clientId) => {
 const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }) => {
   requireClientId(clientId);
   const db = getDb();
-  const skip = page * size;
+  const pageNum = Math.max(0, Number(page) || 0);
+  const sizeNum = Math.min(50, Math.max(1, Number(size) || 50));
+  const skip = pageNum * sizeNum;
   const andArray = [];
 
   // Add type filter if provided
@@ -164,7 +166,7 @@ const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }
     .find({ $and: andArray })
     .sort({ _id: -1 }) // Sort by _id descending
     .skip(skip)
-    .limit(size)
+    .limit(sizeNum)
     .toArray();
 
   // Get the total count of widgets
