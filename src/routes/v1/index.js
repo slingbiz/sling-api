@@ -12,6 +12,7 @@ const themeRoute = require('./theme.route');
 const auditRoute = require('./audit.route');
 const docsRoute = require('./docs.route');
 const inviteRoute = require('./invite.route');
+const memberRoute = require('./member.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -32,6 +33,10 @@ const defaultRoutes = [
   {
     path: '/invite',
     route: inviteRoute,
+  },
+  {
+    path: '/members',
+    route: memberRoute,
   },
   {
     path: '/dashboard',

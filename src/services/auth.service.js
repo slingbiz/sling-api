@@ -31,7 +31,7 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   if (!(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, '[Sling] Incorrect email or password');
   }
-  return user;
+  return userService.ensureWorkspace(user);
 };
 
 /**
@@ -105,6 +105,7 @@ const loginOrRegisterWithGoogleIdToken = async (idToken) => {
     });
   }
 
+  user = await userService.ensureWorkspace(user);
   const tokens = await tokenService.generateAuthTokens(user);
   return { user, tokens, isNewUser };
 };

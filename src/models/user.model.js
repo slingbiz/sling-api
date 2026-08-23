@@ -54,6 +54,12 @@ const userSchema = mongoose.Schema(
       enum: roles,
       default: 'user',
     },
+    workspaceKey: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,

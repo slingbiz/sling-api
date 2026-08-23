@@ -26,7 +26,19 @@ const createUser = async (userBody) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
   }
 
-  const user = await User.create(userBody);
+  const email = String(userBody.email).toLowerCase();
+  if (userBody.workspaceKey) {
+    const role = userBody.role && userBody.role !== 'owner' ? userBody.role : 'user';
+    const user = await User.create({...userBody, email, workspaceKey: userBody.workspaceKey, role});
+    return user;
+  }
+
+  const user = await User.create({
+    ...userBody,
+    email,
+    workspaceKey: email,
+    role: 'owner',
+  });
   return user;
 };
 
@@ -76,9 +88,28 @@ const updateUserById = async (userId, updateBody) => {
   if (updateBody.email && (await User.isEmailTaken(updateBody.email, userId))) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
   }
+  if (updateBody.role) {
+    await assertRoleChange(user, updateBody.role);
+  }
   Object.assign(user, updateBody);
   await user.save();
   return user;
+};
+
+const countOwners = async (workspaceKey) => {
+  return User.countDocuments({workspaceKey, role: 'owner'});
+};
+
+const assertRoleChange = async (user, nextRole) => {
+  if (user.role === 'owner' && nextRole !== 'owner') {
+    const owners = await countOwners(user.workspaceKey);
+    if (owners <= 1) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'The last owner cannot be demoted');
+    }
+  }
+  if (nextRole === 'owner') {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Owner cannot be assigned. Transfer is not in v1');
+  }
 };
 
 /**
@@ -91,8 +122,44 @@ const deleteUserById = async (userId) => {
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
-  await user.remove();
+  if (user.role === 'owner') {
+    const owners = await countOwners(user.workspaceKey);
+    if (owners <= 1) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'The last owner cannot be removed');
+    }
+  }
+  await User.deleteOne({_id: user._id});
   return user;
+};
+
+const ensureWorkspace = async (user) => {
+  if (!user) return user;
+  let changed = false;
+  if (!user.workspaceKey) {
+    user.workspaceKey = user.email;
+    changed = true;
+  }
+  const owners = await countOwners(user.workspaceKey);
+  if (owners === 0) {
+    const oldest = await User.findOne({workspaceKey: user.workspaceKey}).sort({createdAt: 1, _id: 1});
+    if (oldest) {
+      if (String(oldest._id) === String(user._id)) {
+        user.role = 'owner';
+        changed = true;
+      } else if (oldest.role !== 'owner') {
+        oldest.role = 'owner';
+        await oldest.save();
+      }
+    }
+  }
+  if (changed) {
+    await user.save();
+  }
+  return user;
+};
+
+const listWorkspaceMembers = async (workspaceKey) => {
+  return User.find({workspaceKey}).sort({role: 1, createdAt: 1});
 };
 
 module.exports = {
@@ -102,4 +169,7 @@ module.exports = {
   getUserByEmail,
   updateUserById,
   deleteUserById,
+  ensureWorkspace,
+  listWorkspaceMembers,
+  countOwners,
 };

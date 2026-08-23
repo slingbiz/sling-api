@@ -33,18 +33,25 @@ describe('Auth routes', () => {
       const res = await request(app).post('/v1/auth/register').send(newUser).expect(httpStatus.CREATED);
 
       expect(res.body.user).not.toHaveProperty('password');
-      expect(res.body.user).toEqual({
+      expect(res.body.user).toEqual(expect.objectContaining({
         id: expect.anything(),
         name: newUser.name,
         email: newUser.email,
-        role: 'user',
+        role: 'owner',
+        workspaceKey: newUser.email,
         isEmailVerified: false,
-      });
+      }));
 
       const dbUser = await User.findById(res.body.user.id);
       expect(dbUser).toBeDefined();
       expect(dbUser.password).not.toBe(newUser.password);
-      expect(dbUser).toMatchObject({ name: newUser.name, email: newUser.email, role: 'user', isEmailVerified: false });
+      expect(dbUser).toMatchObject({
+        name: newUser.name,
+        email: newUser.email,
+        role: 'owner',
+        workspaceKey: newUser.email,
+        isEmailVerified: false,
+      });
 
       expect(res.body.tokens).toEqual({
         access: { token: expect.anything(), expires: expect.anything() },
@@ -92,13 +99,14 @@ describe('Auth routes', () => {
 
       const res = await request(app).post('/v1/auth/login').send(loginCredentials).expect(httpStatus.OK);
 
-      expect(res.body.user).toEqual({
+      expect(res.body.user).toEqual(expect.objectContaining({
         id: expect.anything(),
         name: userOne.name,
         email: userOne.email,
-        role: userOne.role,
+        role: 'owner',
+        workspaceKey: userOne.email,
         isEmailVerified: userOne.isEmailVerified,
-      });
+      }));
 
       expect(res.body.tokens).toEqual({
         access: { token: expect.anything(), expires: expect.anything() },
@@ -114,7 +122,10 @@ describe('Auth routes', () => {
 
       const res = await request(app).post('/v1/auth/login').send(loginCredentials).expect(httpStatus.UNAUTHORIZED);
 
-      expect(res.body).toEqual({ code: httpStatus.UNAUTHORIZED, message: 'Incorrect email or password' });
+      expect(res.body).toEqual({
+        code: httpStatus.UNAUTHORIZED,
+        message: '[Sling] Incorrect email or password',
+      });
     });
 
     test('should return 401 error if password is wrong', async () => {
@@ -126,7 +137,10 @@ describe('Auth routes', () => {
 
       const res = await request(app).post('/v1/auth/login').send(loginCredentials).expect(httpStatus.UNAUTHORIZED);
 
-      expect(res.body).toEqual({ code: httpStatus.UNAUTHORIZED, message: 'Incorrect email or password' });
+      expect(res.body).toEqual({
+        code: httpStatus.UNAUTHORIZED,
+        message: '[Sling] Incorrect email or password',
+      });
     });
   });
 

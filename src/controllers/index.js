@@ -8,3 +8,4 @@ module.exports.mediaController = require('./media.controller');
 module.exports.pageRoutesController = require('./pageRoutes.controller');
 module.exports.themeController = require('./theme.controller');
 module.exports.auditController = require('./audit.controller');
+module.exports.memberController = require('./member.controller');
