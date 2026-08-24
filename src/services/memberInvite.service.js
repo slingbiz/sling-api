@@ -25,7 +25,7 @@ const createInvite = async ({email, role}, actor) => {
   }
   const existing = await MemberInvite.findOne({email: normalized, workspaceKey, status: 'pending'});
   if (existing && existing.expiresAt > new Date()) {
-    return {invite: existing, inviteUrl: inviteUrlFor(existing.token), alreadyPending: true};
+    return {invite: existing, inviteUrl: inviteUrlFor(existing.token), alreadyPending: true, emailSent: false};
   }
   const token = crypto.randomBytes(24).toString('hex');
   const invite = await MemberInvite.create({
@@ -38,16 +38,15 @@ const createInvite = async ({email, role}, actor) => {
     status: 'pending',
   });
   const inviteUrl = inviteUrlFor(token);
+  const roleLabel = invite.role === 'user' ? 'Member' : invite.role;
+  let emailSent = false;
   try {
-    await emailService.sendEmail(
-      normalized,
-      'You are invited to a Sling workspace',
-      `Join this Sling workspace as ${invite.role}.\n\n${inviteUrl}\n\nThis link expires in 7 days.`
-    );
+    emailSent = await emailService.sendInviteEmail(normalized, inviteUrl, roleLabel);
   } catch (err) {
     console.log(err.message, '[createInvite] email skipped');
+    emailSent = false;
   }
-  return {invite, inviteUrl, alreadyPending: false};
+  return {invite, inviteUrl, alreadyPending: false, emailSent};
 };
 
 const listInvites = async (workspaceKey) => {

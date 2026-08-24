@@ -129,6 +129,33 @@ const sendWelcomeEmail = async (userEmail, userName) => {
   }
 };
 
+const sendInviteEmail = async (to, inviteUrl, roleLabel) => {
+  const subject = 'You are invited to a Sling workspace';
+  const text = `Join this Sling workspace as ${roleLabel}.\n\n${inviteUrl}\n\nThis link expires in 7 days.`;
+  const html = `<p>Join this Sling workspace as <strong>${roleLabel}</strong>.</p>
+<p><a href="${inviteUrl}" style="color:#ff9800">Accept invite</a></p>
+<p>This link expires in 7 days.</p>`;
+
+  if (process.env.MJ_APIKEY_PUBLIC && process.env.MJ_APIKEY_PRIVATE) {
+    const mailjetClient = mailjet.apiConnect(process.env.MJ_APIKEY_PUBLIC, process.env.MJ_APIKEY_PRIVATE);
+    await mailjetClient.post('send', {version: 'v3'}).request({
+      FromEmail: process.env.EMAIL_FROM || 'hello@sling.biz',
+      FromName: 'Sling',
+      Recipients: [{Email: to}],
+      Subject: subject,
+      'Text-part': text,
+      'Html-part': html,
+    });
+    return true;
+  }
+
+  if (!config.email.smtp.host) {
+    return false;
+  }
+  await transport.sendMail({from: config.email.from, to, subject, text, html});
+  return true;
+};
+
 module.exports = {
   transport,
   sendEmail,
@@ -136,4 +163,5 @@ module.exports = {
   sendVerificationEmail,
   sendVerificationEmailByToken,
   sendWelcomeEmail,
+  sendInviteEmail,
 };
