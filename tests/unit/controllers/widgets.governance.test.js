@@ -4,7 +4,8 @@ const { WidgetStatus } = require('../../../src/constants/appEnums');
 jest.mock('../../../src/services', () => ({
   widgetsService: {
     getWidgets: jest.fn().mockResolvedValue({ widgets: [], tc: 0 }),
-    createWidget: jest.fn().mockResolvedValue({ _id: 'w1', status: 'draft' }),
+    createWidget: jest.fn().mockResolvedValue({ _id: 'w1', status: 'draft', key: 'X' }),
+    updateWidget: jest.fn().mockResolvedValue({ widgets: [{ _id: 'w1', key: 'X' }], tc: 1 }),
     submitWidgetForReview: jest.fn().mockResolvedValue({ _id: 'w1', status: 'pending_review' }),
     reviewWidget: jest.fn().mockResolvedValue({ _id: 'w1', status: 'approved' }),
     publishWidget: jest.fn().mockResolvedValue({ _id: 'w1', status: 'published' }),
@@ -19,6 +20,11 @@ jest.mock('../../../src/services', () => ({
       code: 'const PreviewComponent = () => null;',
     }),
   },
+  widgetVersionService: {
+    listVersions: jest.fn().mockResolvedValue({ versions: [], tc: 0 }),
+    getVersion: jest.fn().mockResolvedValue({ version: { id: 'v1', code: 'x' } }),
+    revert: jest.fn().mockResolvedValue({ _id: 'w1', status: 'draft', version: 2, key: 'X' }),
+  },
   themeService: {
     getTheme: jest.fn().mockResolvedValue({ theme: { palette: {} } }),
     saveTheme: jest.fn().mockResolvedValue({ theme: { palette: {} } }),
@@ -30,7 +36,7 @@ jest.mock('../../../src/services', () => ({
 }));
 
 const widgetsController = require('../../../src/controllers/widgets.controller');
-const { widgetsService, auditService } = require('../../../src/services');
+const { widgetsService, auditService, widgetVersionService } = require('../../../src/services');
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -137,6 +143,23 @@ describe('widgets controller governance', () => {
     publishReq.user = { id: 'user-a' };
     await run(widgetsController.publishWidget, publishReq);
     expect(auditService.write).toHaveBeenCalledWith(expect.objectContaining({ action: 'widget.publish', clientId: 'tenant-a' }));
+
+    const updateReq = httpMocks.createRequest({
+      body: { id: 'w1', widget: { key: 'X', code: 'const PreviewComponent = () => null;' } },
+    });
+    updateReq.clientId = 'tenant-a';
+    updateReq.user = { id: 'user-a' };
+    await run(widgetsController.updateWidget, updateReq);
+    expect(auditService.write).toHaveBeenCalledWith(expect.objectContaining({ action: 'widget.update', clientId: 'tenant-a' }));
+
+    const revertReq = httpMocks.createRequest({ params: { widgetId: 'w1', versionId: 'v1' } });
+    revertReq.clientId = 'tenant-a';
+    revertReq.user = { id: 'user-a' };
+    await run(widgetsController.revertWidgetVersion, revertReq);
+    expect(widgetVersionService.revert).toHaveBeenCalledWith(
+      expect.objectContaining({ widgetId: 'w1', versionId: 'v1', clientId: 'tenant-a' })
+    );
+    expect(auditService.write).toHaveBeenCalledWith(expect.objectContaining({ action: 'widget.revert', clientId: 'tenant-a' }));
   });
 
   test('submit still returns 200 if audit write fails', async () => {

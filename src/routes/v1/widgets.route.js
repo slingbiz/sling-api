@@ -29,4 +29,14 @@ router
   .route('/:widgetId/publish')
   .post(auth('reviewWidgets'), validate(widgetValidation.publishWidget), widgetsController.publishWidget);
 
+router
+  .route('/:widgetId/versions')
+  .get(auth(), validate(widgetValidation.listVersions), widgetsController.listWidgetVersions);
+router
+  .route('/:widgetId/versions/:versionId')
+  .get(auth(), validate(widgetValidation.getVersion), widgetsController.getWidgetVersion);
+router
+  .route('/:widgetId/versions/:versionId/revert')
+  .post(auth('reviewWidgets'), validate(widgetValidation.revertVersion), widgetsController.revertWidgetVersion);
+
 module.exports = router;

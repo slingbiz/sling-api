@@ -1,6 +1,7 @@
 const { WidgetStatus, WidgetSource } = require('../../../src/constants/appEnums');
 
 const store = [];
+const versionStore = [];
 const nextId = () => `w${store.length + 1}${Date.now().toString(36)}`;
 
 const matches = (doc, query = {}) => {
@@ -68,6 +69,41 @@ jest.mock('../../../src/models', () => ({
     }),
     isKeyTaken: jest.fn(async (key, type, clientId) => store.some((doc) => doc.key === key && doc.type === type && doc.client_id === clientId)),
   },
+  WidgetVersion: {
+    create: jest.fn(async (body) => {
+      const doc = { _id: `v${versionStore.length + 1}`, createdAt: new Date(), ...body };
+      versionStore.push(doc);
+      return doc;
+    }),
+    find: jest.fn((query) => ({
+      sort: () => ({
+        skip: (n) => ({
+          limit: (lim) => ({
+            lean: async () => {
+              const rows = versionStore.filter((doc) => matches(doc, query));
+              return rows.slice(n, n + lim);
+            },
+          }),
+        }),
+      }),
+    })),
+    findOne: jest.fn((query) => ({
+      lean: async () => versionStore.find((doc) => matches(doc, query)) || null,
+    })),
+    countDocuments: jest.fn(async (query) => versionStore.filter((doc) => matches(doc, query)).length),
+  },
+  User: {
+    findById: jest.fn(() => ({
+      select: () => ({
+        lean: async () => null,
+      }),
+    })),
+    find: jest.fn(() => ({
+      select: () => ({
+        lean: async () => [],
+      }),
+    })),
+  },
 }));
 
 jest.mock('../../../src/utils/mongoInit', () => ({
@@ -126,6 +162,7 @@ const baseWidget = (overrides = {}) => ({
 describe('widgets governance', () => {
   beforeEach(() => {
     store.splice(0, store.length);
+    versionStore.splice(0, versionStore.length);
     jest.clearAllMocks();
   });
 
@@ -360,8 +397,23 @@ describe('widgets governance', () => {
       await widgetsService.submitWidgetForReview(draft._id, 'tenant-a');
       throw new Error('expected submit to reject');
     } catch (error) {
-      expect(error.statusCode).toBe(400);
-      expect(error.message).toMatch(/cannot be submitted/i);
-    }
+    expect(error.statusCode).toBe(400);
+    expect(error.message).toMatch(/cannot be submitted/i);
+  }
+  });
+
+  test('save snapshots the widget for this tenant', async () => {
+    const widget = await widgetsService.createWidget(baseWidget({ key: 'SnapSave', code: safeCode }), 'tenant-a');
+    const snaps = versionStore.filter((item) => String(item.widgetId) === String(widget._id));
+    expect(snaps).toHaveLength(1);
+    expect(snaps[0].code).toBe(safeCode);
+    expect(snaps[0].client_id).toBe('tenant-a');
+    expect(snaps[0].action).toBe('generate');
+    expect(snaps[0].version).toBe(1);
+
+    await widgetsService.updateWidget(widget._id, { code: safeCode, description: 'edited' }, 'tenant-a');
+    const afterSave = versionStore.filter((item) => String(item.widgetId) === String(widget._id));
+    expect(afterSave).toHaveLength(2);
+    expect(afterSave[1].action).toBe('save');
   });
 });

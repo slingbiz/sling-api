@@ -6,6 +6,6 @@ const auditController = require('../../controllers/audit.controller');
 
 const router = express.Router();
 
-router.route('/').get(auth(), validate(auditValidation.listAudit), auditController.listAudit);
+router.route('/').get(auth('getUsers'), validate(auditValidation.listAudit), auditController.listAudit);
 
 module.exports = router;

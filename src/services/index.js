@@ -10,4 +10,5 @@ module.exports.widgetGenerateService = require('./widgetGenerate.service');
 module.exports.themeService = require('./theme.service');
 module.exports.pageRoutesService = require('./pageRoutes.service');
 module.exports.auditService = require('./audit.service');
+module.exports.widgetVersionService = require('./widgetVersion.service');
 module.exports.memberInviteService = require('./memberInvite.service');

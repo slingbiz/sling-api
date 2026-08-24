@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 const { WidgetStatus, WidgetSource } = require('../constants/appEnums');
 const githubPublishService = require('./githubPublish.service');
 const { checkCodePolicy } = require('./codePolicy.service');
+const widgetVersionService = require('./widgetVersion.service');
 
 const { getDb } = require('../utils/mongoInit');
 
@@ -34,11 +35,19 @@ const sanitizeWidgetProps = (props) => {
   );
 };
 
+const snapshotSafely = async (widget, action, actorUserId) => {
+  try {
+    await widgetVersionService.snapshot(widget, { action, actorUserId });
+  } catch (error) {
+    // Widget write already succeeded; a missed snapshot must not 500 the save.
+  }
+};
+
 const persistGovernanceFields = async (widget, fields) => {
   try {
     const updated = await Widget.findOneAndUpdate(
       { _id: widget._id, client_id: widget.client_id },
-      { $set: fields },
+      { $set: { ...fields, version: (widget.version || 1) + 1 } },
       { new: true }
     );
     if (!updated) {
@@ -115,7 +124,7 @@ const resolveWidgetKey = async (widgetBody, clientId) => {
   return { key: `${base}_${Date.now().toString(36)}` };
 };
 
-const createWidget = async (widgetBody, clientId) => {
+const createWidget = async (widgetBody, clientId, actorUserId) => {
   requireClientId(clientId);
   const incomingStatus = widgetBody.status;
   const policy = applyCodePolicy(widgetBody);
@@ -131,6 +140,7 @@ const createWidget = async (widgetBody, clientId) => {
   if (nextBody.source === WidgetSource.AI_GENERATED) {
     nextBody.status = WidgetStatus.DRAFT;
   }
+  const snapshotAction = nextBody.source === WidgetSource.AI_GENERATED ? 'generate' : 'save';
   const { key, existingId } = await resolveWidgetKey(nextBody, clientId);
   try {
     if (existingId) {
@@ -144,9 +154,12 @@ const createWidget = async (widgetBody, clientId) => {
       if (!widget) {
         throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${existingId}`);
       }
+      await snapshotSafely(widget, snapshotAction, actorUserId);
       return widget;
     }
-    return await Widget.create({ ...nextBody, key, client_id: clientId, version: nextBody.version || 1 });
+    const created = await Widget.create({ ...nextBody, key, client_id: clientId, version: nextBody.version || 1 });
+    await snapshotSafely(created, snapshotAction, actorUserId);
+    return created;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong. Message: ${error.message}`);
@@ -217,7 +230,7 @@ const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }
   return { widgets: widgetsRes, tc: totalRes };
 };
 
-const updateWidget = async (id, widgetBody, clientId) => {
+const updateWidget = async (id, widgetBody, clientId, actorUserId) => {
   requireClientId(clientId);
   if (widgetBody && widgetBody.status === WidgetStatus.PUBLISHED) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Widget must be approved before it can be published');
@@ -231,7 +244,8 @@ const updateWidget = async (id, widgetBody, clientId) => {
   if (nextBody && Object.prototype.hasOwnProperty.call(nextBody, 'props')) {
     nextBody.props = sanitizeWidgetProps(nextBody.props);
   }
-  const widget = await Widget.findOneAndUpdate({ _id: id, client_id: clientId }, nextBody, {
+  const payload = { ...(nextBody || {}), version: (existing.version || 1) + 1 };
+  const widget = await Widget.findOneAndUpdate({ _id: id, client_id: clientId }, payload, {
     new: true,
     upsert: false,
   });
@@ -239,6 +253,7 @@ const updateWidget = async (id, widgetBody, clientId) => {
   if (!widget) {
     throw new ApiError(httpStatus.NOT_FOUND, `Widget not found: ${id}`);
   }
+  await snapshotSafely(widget, 'save', actorUserId);
   try {
     const widgets = await getWidgets({ type: widget.type, clientId });
     return widgets;
@@ -247,7 +262,7 @@ const updateWidget = async (id, widgetBody, clientId) => {
   }
 };
 
-const updateWidgetByKey = async (key, widgetBody, clientId) => {
+const updateWidgetByKey = async (key, widgetBody, clientId, actorUserId) => {
   requireClientId(clientId);
   if (widgetBody && widgetBody.status === WidgetStatus.PUBLISHED) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Widget must be approved before it can be published');
@@ -269,7 +284,7 @@ const updateWidgetByKey = async (key, widgetBody, clientId) => {
   try {
     widget = await Widget.findOneAndUpdate(
       { key, client_id: clientId },
-      { $set: { ...nextBody } },
+      { $set: { ...nextBody, version: (existing.version || 1) + 1 } },
       { new: true, upsert: false }
     );
   } catch (err) {
@@ -282,6 +297,7 @@ const updateWidgetByKey = async (key, widgetBody, clientId) => {
   if (!widget) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Something went wrong in updating the Widget with Key ${key}`);
   }
+  await snapshotSafely(widget, 'save', actorUserId);
   return widget;
 };
 
@@ -302,7 +318,7 @@ const deleteWidget = async (id, clientId) => {
 // Draft or previously-rejected widgets can be (re)submitted for review.
 // Anything already in-flight or already published must go through its own
 // dedicated action instead (review / publish) rather than being resubmitted.
-const submitWidgetForReview = async (id, clientId) => {
+const submitWidgetForReview = async (id, clientId, actorUserId) => {
   const widget = await findTenantWidget(id, clientId);
   if (![WidgetStatus.DRAFT, WidgetStatus.REJECTED].includes(widget.status)) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Widget cannot be submitted for review from status "${widget.status}"`);
@@ -311,11 +327,13 @@ const submitWidgetForReview = async (id, clientId) => {
   if (!policy.allowed) {
     throw policyError(policy.violations);
   }
-  return persistGovernanceFields(widget, {
+  const updated = await persistGovernanceFields(widget, {
     status: WidgetStatus.PENDING_REVIEW,
     policyViolations: policy.violations,
     props: sanitizeWidgetProps(widget.props),
   });
+  await snapshotSafely(updated, 'submit', actorUserId);
+  return updated;
 };
 
 // Approve or reject a widget that's pending review. Restricted to the
@@ -327,10 +345,12 @@ const reviewWidget = async (id, { action, notes }, clientId, reviewerId) => {
   if (widget.status !== WidgetStatus.PENDING_REVIEW) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Widget is not pending review (current status: "${widget.status}")`);
   }
-  return persistGovernanceFields(widget, {
+  const updated = await persistGovernanceFields(widget, {
     status: action === 'approve' ? WidgetStatus.APPROVED : WidgetStatus.REJECTED,
     review: { reviewedBy: reviewerId, reviewedAt: new Date(), notes },
   });
+  await snapshotSafely(updated, action === 'approve' ? 'approve' : 'reject', reviewerId);
+  return updated;
 };
 
 // Admins/publishers can publish from draft, pending review, or approved.
@@ -348,7 +368,7 @@ const PUBLISHABLE_STATUSES = [
   WidgetStatus.APPROVED,
 ];
 
-const publishWidget = async (id, clientId) => {
+const publishWidget = async (id, clientId, actorUserId) => {
   const widget = await findTenantWidget(id, clientId);
   if (!PUBLISHABLE_STATUSES.includes(widget.status)) {
     throw new ApiError(
@@ -377,12 +397,14 @@ const publishWidget = async (id, clientId) => {
     }
   }
 
-  return persistGovernanceFields(widget, {
+  const updated = await persistGovernanceFields(widget, {
     status: WidgetStatus.PUBLISHED,
     publishedAt: new Date(),
     policyViolations: policy.violations,
     props: sanitizeWidgetProps(widget.props),
   });
+  await snapshotSafely(updated, 'publish', actorUserId);
+  return updated;
 };
 
 module.exports = {

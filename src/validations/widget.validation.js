@@ -30,9 +30,36 @@ const generateWidget = {
   }),
 };
 
+const listVersions = {
+  params: Joi.object().keys({
+    widgetId: Joi.string().required().custom(objectId),
+  }),
+  query: Joi.object().keys({
+    page: Joi.number().integer().min(0),
+    size: Joi.number().integer().min(1).max(50),
+  }),
+};
+
+const getVersion = {
+  params: Joi.object().keys({
+    widgetId: Joi.string().required().custom(objectId),
+    versionId: Joi.string().required().custom(objectId),
+  }),
+};
+
+const revertVersion = {
+  params: Joi.object().keys({
+    widgetId: Joi.string().required().custom(objectId),
+    versionId: Joi.string().required().custom(objectId),
+  }),
+};
+
 module.exports = {
   submitForReview,
   reviewWidget,
   publishWidget,
   generateWidget,
+  listVersions,
+  getVersion,
+  revertVersion,
 };
