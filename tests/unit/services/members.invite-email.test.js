@@ -26,6 +26,7 @@ describe('member invite email', () => {
     expect(html).toMatch(/#ff9800/);
     expect(html).toMatch(/<InviteUrl>/);
     expect(html).toMatch(/<RoleLabel>/);
-    expect(html).toMatch(/slingfe\.png/);
+    expect(html).toMatch(/www\.sling\.biz\/assets\/images\/sling-fe\.png/);
+    expect(html).not.toMatch(/stripocdn\.email.*slingfe/);
   });
 });
