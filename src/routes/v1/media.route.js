@@ -13,5 +13,8 @@ router.route('/dash/getMedia').post(auth(), mediaController.getMedia);
 router.route('/dash/getMediaConstants').post(auth(), mediaController.getMediaConstants);
 router.route('/saveImage').post(auth(), upload.single('file'), mediaController.saveImage);
 router.route('/uploadImage').post(auth(), upload.single('file'), mediaController.uploadImage);
+router.route('/updateImage').post(auth(), mediaController.updateImage).patch(auth(), mediaController.updateImage);
+router.route('/deleteImage').delete(auth(), mediaController.deleteImage);
+router.route('/deleteImage/:id').delete(auth(), mediaController.deleteImage);
 
 module.exports = router;

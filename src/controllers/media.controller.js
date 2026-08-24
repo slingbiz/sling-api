@@ -48,6 +48,50 @@ const saveImage = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ image });
 });
 
+const imageIdFromReq = (req) => {
+  const body = req.body || {};
+  return req.params.id || body._id || body.id;
+};
+
+const updateFieldsFromReq = (req) => {
+  const body = req.body || {};
+  const nested = body.update || {};
+  return {
+    title: body.title ?? body.name ?? nested.title ?? nested.name,
+    alt_text: body.alt_text ?? body.altText ?? nested.alt_text ?? nested.altText,
+  };
+};
+
+const updateImage = catchAsync(async (req, res) => {
+  const { clientId } = req;
+  const { title, alt_text: altText } = updateFieldsFromReq(req);
+  const image = await mediaService.updateImage({
+    id: imageIdFromReq(req),
+    title,
+    alt_text: altText,
+    clientId,
+  });
+  res.status(httpStatus.OK).send({ image });
+});
+
+const deleteGcsObjectBestEffort = async (url) => {
+  if (!bucket || !url) return;
+  const objectName = mediaService.objectNameFromPublicUrl(url, bucket.name);
+  if (!objectName) return;
+  try {
+    await bucket.file(objectName).delete({ ignoreNotFound: true });
+  } catch (err) {
+    console.error('GCS delete failed', err);
+  }
+};
+
+const deleteImage = catchAsync(async (req, res) => {
+  const { clientId } = req;
+  const image = await mediaService.deleteImage({ id: imageIdFromReq(req), clientId });
+  await deleteGcsObjectBestEffort(image && image.url);
+  res.status(httpStatus.OK).send({ status: true });
+});
+
 const uploadImage = catchAsync(async (req, res) => {
   try {
     if (!bucket) {
@@ -64,13 +108,9 @@ const uploadImage = catchAsync(async (req, res) => {
       throw new Error('A file name must be specified');
     }
 
-    // Create a new blob in the bucket and upload the file
-    const blob = bucket.file(
-      fileName
-        .replace(/[^a-zA-Z0-9.]/g, '_')
-        .replace(/_{2,}/g, '_')
-        .replace(/^_|_$/g, '')
-    );
+    // Prefix with clientId so two tenants cannot overwrite the same filename.
+    const objectName = mediaService.buildGcsObjectName(req.clientId, fileName);
+    const blob = bucket.file(objectName);
 
     const blobStream = blob.createWriteStream({
       resumable: false,
@@ -99,5 +139,7 @@ module.exports = {
   getMedia,
   getMediaConstants,
   saveImage,
+  updateImage,
+  deleteImage,
   uploadImage,
 };
