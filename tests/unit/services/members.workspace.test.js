@@ -23,6 +23,7 @@ describe('workspace members', () => {
   test('last owner cannot be removed', () => {
     expect(userSrc).toMatch(/last owner cannot be removed/);
     expect(userSrc).toMatch(/last owner cannot be demoted/);
+    expect(userSrc).toMatch(/last owner cannot be moved to another workspace/);
   });
 
   test('ensureWorkspace promotes the oldest member when a workspace has no owner', () => {

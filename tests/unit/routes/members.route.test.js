@@ -11,6 +11,12 @@ describe('members routes', () => {
     expect(src).toMatch(/acceptInvite/);
   });
 
+  test('invite preview tells Studio whether the email already has an account', () => {
+    expect(inviteSrc).toMatch(/presentInvite/);
+    expect(inviteSrc).toMatch(/existingAccount/);
+    expect(inviteSrc).not.toMatch(/Inviting existing accounts is not in v1/);
+  });
+
   test('invite URL is studio /invite/:token so the copy-link works if SMTP fails', () => {
     expect(inviteSrc).toMatch(/studio\.sling\.biz/);
     expect(inviteSrc).toMatch(/\/invite\/\$\{token\}/);

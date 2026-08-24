@@ -13,8 +13,8 @@ const accept = {
     token: Joi.string().required(),
   }),
   body: Joi.object().keys({
-    name: Joi.string().required(),
-    password: Joi.string().required().custom(password),
+    name: Joi.string(),
+    password: Joi.string().custom(password),
   }),
 };
 

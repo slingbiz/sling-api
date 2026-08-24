@@ -52,8 +52,8 @@ const revokeInvite = catchAsync(async (req, res) => {
 });
 
 const getInvite = catchAsync(async (req, res) => {
-  const invite = await memberInviteService.getInviteByToken(req.params.token);
-  res.send({email: invite.email, role: invite.role});
+  const invite = await memberInviteService.presentInvite(req.params.token);
+  res.send(invite);
 });
 
 const acceptInvite = catchAsync(async (req, res) => {

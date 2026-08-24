@@ -132,6 +132,19 @@ const deleteUserById = async (userId) => {
   return user;
 };
 
+const assertCanLeaveWorkspace = async (user) => {
+  if (!user || user.role !== 'owner') {
+    return;
+  }
+  const owners = await countOwners(user.workspaceKey);
+  if (owners <= 1) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'The last owner cannot be moved to another workspace'
+    );
+  }
+};
+
 const ensureWorkspace = async (user) => {
   if (!user) return user;
   let changed = false;
@@ -172,4 +185,5 @@ module.exports = {
   ensureWorkspace,
   listWorkspaceMembers,
   countOwners,
+  assertCanLeaveWorkspace,
 };

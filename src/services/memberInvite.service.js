@@ -10,6 +10,8 @@ const studioBase = () => (process.env.STUDIO_URL || 'https://studio.sling.biz').
 
 const inviteUrlFor = (token) => `${studioBase()}/invite/${token}`;
 
+const inviteRole = (role) => (role === 'admin' || role === 'publisher' ? role : 'user');
+
 const createInvite = async ({email, role}, actor) => {
   const workspaceKey = actor.workspaceKey || actor.email;
   const normalized = String(email).toLowerCase();
@@ -18,10 +20,7 @@ const createInvite = async ({email, role}, actor) => {
     if (existingUser.workspaceKey === workspaceKey) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'That person is already in this workspace');
     }
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      'That email already has a Sling account. Inviting existing accounts is not in v1'
-    );
+    await userService.assertCanLeaveWorkspace(existingUser);
   }
   const existing = await MemberInvite.findOne({email: normalized, workspaceKey, status: 'pending'});
   if (existing && existing.expiresAt > new Date()) {
@@ -30,7 +29,7 @@ const createInvite = async ({email, role}, actor) => {
   const token = crypto.randomBytes(24).toString('hex');
   const invite = await MemberInvite.create({
     email: normalized,
-    role: role === 'admin' || role === 'publisher' ? role : 'user',
+    role: inviteRole(role),
     workspaceKey,
     token,
     invitedBy: actor.email,
@@ -71,8 +70,30 @@ const getInviteByToken = async (token) => {
   return invite;
 };
 
-const acceptInvite = async (token, {name, password}) => {
+const presentInvite = async (token) => {
   const invite = await getInviteByToken(token);
+  const existingUser = await User.findOne({email: invite.email});
+  return {email: invite.email, role: invite.role, existingAccount: Boolean(existingUser)};
+};
+
+const acceptInvite = async (token, {name, password} = {}) => {
+  const invite = await getInviteByToken(token);
+  const existingUser = await User.findOne({email: invite.email});
+  if (existingUser) {
+    if (existingUser.workspaceKey === invite.workspaceKey) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'That person is already in this workspace');
+    }
+    await userService.assertCanLeaveWorkspace(existingUser);
+    existingUser.workspaceKey = invite.workspaceKey;
+    existingUser.role = inviteRole(invite.role);
+    await existingUser.save();
+    invite.status = 'accepted';
+    await invite.save();
+    return existingUser;
+  }
+  if (!name || !password) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Name and password are required');
+  }
   const user = await userService.createUser({
     name,
     email: invite.email,
@@ -90,6 +111,7 @@ module.exports = {
   listInvites,
   revokeInvite,
   getInviteByToken,
+  presentInvite,
   acceptInvite,
   inviteUrlFor,
 };

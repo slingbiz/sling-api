@@ -27,11 +27,12 @@ Owner or Admin invites by email + role (Member, Publisher, or Admin).
 
 - Creates a pending invite (7 days).
 - Returns a link. Email is sent when SMTP works. Link can always be copied.
-- Accept: name + password → user in that workspace with the invited role.
-- Invite email that already belongs to the workspace is rejected.
+- Accept: new email creates a user (name + password). Existing email moves that user into this workspace — no second account, no new password.
+- Invite email that already belongs to this workspace is rejected.
+- Invite email that already has a Sling account in another workspace is allowed. Accepting moves them (one workspace per user). Last owner of the other workspace cannot be invited or moved.
 - Revoke pending invite.
 
-No Guest role in v1.
+No Guest role in v1. A user cannot be in two workspaces at once.
 
 ## Settings → Members
 
