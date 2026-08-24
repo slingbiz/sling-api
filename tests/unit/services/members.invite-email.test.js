@@ -11,6 +11,21 @@ describe('member invite email', () => {
     expect(emailSrc).toMatch(/Accept invite/);
     expect(inviteSrc).toMatch(/sendInviteEmail/);
     expect(emailSrc).toMatch(/FROM_EMAIL = 'hello@sling.biz'/);
+    expect(emailSrc).toMatch(/EmailTemplates\/invite\.html/);
+    expect(emailSrc).toMatch(/FROM_NAME = 'Sling Team'/);
     expect(emailSrc).not.toMatch(/support@/);
+  });
+
+  test('invite HTML matches the welcome layout with an Accept invite button', () => {
+    const html = fs.readFileSync(
+      path.join(__dirname, '../../../src/utils/EmailTemplates/invite.html'),
+      'utf8',
+    );
+    expect(html).toMatch(/You're invited to Sling/);
+    expect(html).toMatch(/Accept invite/);
+    expect(html).toMatch(/#ff9800/);
+    expect(html).toMatch(/<InviteUrl>/);
+    expect(html).toMatch(/<RoleLabel>/);
+    expect(html).toMatch(/slingfe\.png/);
   });
 });

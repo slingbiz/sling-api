@@ -7,7 +7,7 @@ const config = require('../config/config');
 const logger = require('../config/logger');
 
 const FROM_EMAIL = 'hello@sling.biz';
-const FROM_NAME = 'Sling';
+const FROM_NAME = 'Sling Team';
 
 const transport = nodemailer.createTransport(config.email.smtp);
 /* istanbul ignore next */
@@ -133,11 +133,11 @@ const sendWelcomeEmail = async (userEmail, userName) => {
 };
 
 const sendInviteEmail = async (to, inviteUrl, roleLabel) => {
-  const subject = 'You are invited to a Sling workspace';
-  const text = `Join this Sling workspace as ${roleLabel}.\n\n${inviteUrl}\n\nThis link expires in 7 days.`;
-  const html = `<p>Join this Sling workspace as <strong>${roleLabel}</strong>.</p>
-<p><a href="${inviteUrl}" style="color:#ff9800">Accept invite</a></p>
-<p>This link expires in 7 days.</p>`;
+  const subject = "You're invited to Sling";
+  const text = `You've been invited to join a Sling workspace as ${roleLabel}.\n\nAccept invite: ${inviteUrl}\n\nThis link expires in 7 days.`;
+  const templatePath = path.join(__dirname, '../utils/EmailTemplates/invite.html');
+  let html = fs.readFileSync(templatePath, 'utf8');
+  html = html.split('<RoleLabel>').join(roleLabel).split('<InviteUrl>').join(inviteUrl);
 
   if (process.env.MJ_APIKEY_PUBLIC && process.env.MJ_APIKEY_PRIVATE) {
     const mailjetClient = mailjet.apiConnect(process.env.MJ_APIKEY_PUBLIC, process.env.MJ_APIKEY_PRIVATE);
@@ -155,7 +155,7 @@ const sendInviteEmail = async (to, inviteUrl, roleLabel) => {
   if (!config.email.smtp.host) {
     return false;
   }
-  await transport.sendMail({from: FROM_EMAIL, to, subject, text, html});
+  await transport.sendMail({from: `${FROM_NAME} <${FROM_EMAIL}>`, to, subject, text, html});
   return true;
 };
 
