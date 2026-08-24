@@ -6,6 +6,9 @@ const mailjet = require('node-mailjet');
 const config = require('../config/config');
 const logger = require('../config/logger');
 
+const FROM_EMAIL = 'hello@sling.biz';
+const FROM_NAME = 'Sling';
+
 const transport = nodemailer.createTransport(config.email.smtp);
 /* istanbul ignore next */
 if (config.env !== 'test') {
@@ -24,7 +27,7 @@ if (config.env !== 'test') {
  */
 const sendEmail = async (to, subject, text) => {
   try {
-    const msg = { from: config.email.from, to, subject, text };
+    const msg = { from: FROM_EMAIL, to, subject, text };
     await transport.sendMail(msg);
   } catch (e) {
     console.log(e.message, '[sendEmail] Exception');
@@ -92,7 +95,7 @@ const sendWelcomeEmail = async (userEmail, userName) => {
     // Prepare and send the email via Mailjet
     const request = mailjetClient.post('send', { version: 'v3' });
     const result = await request.request({
-      FromEmail: 'hello@sling.biz', // Replace with your sender email
+      FromEmail: FROM_EMAIL,
       FromName: 'Sling Team',
       Recipients: [
         {
@@ -109,7 +112,7 @@ const sendWelcomeEmail = async (userEmail, userName) => {
     // Todo: BCC issue to be fixed.
     if (process.env.BCC_EMAIL) {
       request.request({
-        FromEmail: 'hello@sling.biz', // Replace with your sender email
+        FromEmail: FROM_EMAIL,
         FromName: 'Sling Team',
         Recipients: [
           {
@@ -139,8 +142,8 @@ const sendInviteEmail = async (to, inviteUrl, roleLabel) => {
   if (process.env.MJ_APIKEY_PUBLIC && process.env.MJ_APIKEY_PRIVATE) {
     const mailjetClient = mailjet.apiConnect(process.env.MJ_APIKEY_PUBLIC, process.env.MJ_APIKEY_PRIVATE);
     await mailjetClient.post('send', {version: 'v3'}).request({
-      FromEmail: process.env.EMAIL_FROM || 'hello@sling.biz',
-      FromName: 'Sling',
+      FromEmail: FROM_EMAIL,
+      FromName: FROM_NAME,
       Recipients: [{Email: to}],
       Subject: subject,
       'Text-part': text,
@@ -152,7 +155,7 @@ const sendInviteEmail = async (to, inviteUrl, roleLabel) => {
   if (!config.email.smtp.host) {
     return false;
   }
-  await transport.sendMail({from: config.email.from, to, subject, text, html});
+  await transport.sendMail({from: FROM_EMAIL, to, subject, text, html});
   return true;
 };
 

@@ -22,7 +22,7 @@ const envVarsSchema = Joi.object()
     SMTP_PORT: Joi.number().description('port to connect to the email server'),
     SMTP_USERNAME: Joi.string().description('username for email server'),
     SMTP_PASSWORD: Joi.string().description('password for email server'),
-    EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
+    EMAIL_FROM: Joi.string().default('hello@sling.biz').description('the from field in the emails sent by the app'),
     UNSPLASH_ACCESS_KEY: Joi.string().description('Unsplash API access key'),
     UNSPLASH_SECRET_KEY: Joi.string().description('Unsplash API secret key'),
     UNSPLASH_APP_ID: Joi.string().description('Unsplash API app ID'),

@@ -10,6 +10,7 @@ describe('member invite email', () => {
     expect(emailSrc).toMatch(/MJ_APIKEY_PUBLIC/);
     expect(emailSrc).toMatch(/Accept invite/);
     expect(inviteSrc).toMatch(/sendInviteEmail/);
-    expect(inviteSrc).toMatch(/emailSent/);
+    expect(emailSrc).toMatch(/FROM_EMAIL = 'hello@sling.biz'/);
+    expect(emailSrc).not.toMatch(/support@/);
   });
 });
