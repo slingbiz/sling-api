@@ -32,6 +32,15 @@ jest.mock('../../../src/services', () => ({
   auditService: {
     write: jest.fn().mockResolvedValue({ _id: 'a1' }),
     list: jest.fn().mockResolvedValue({ events: [], tc: 0 }),
+    actorFromUser: (user) => {
+      if (!user) return { actorUserId: undefined, actorName: undefined, actorEmail: undefined };
+      const raw = user._id != null && user._id !== '' ? user._id : user.id;
+      return {
+        actorUserId: raw != null && raw !== '' ? String(raw) : undefined,
+        actorName: user.name || undefined,
+        actorEmail: user.email || undefined,
+      };
+    },
   },
 }));
 
@@ -160,6 +169,28 @@ describe('widgets controller governance', () => {
       expect.objectContaining({ widgetId: 'w1', versionId: 'v1', clientId: 'tenant-a' })
     );
     expect(auditService.write).toHaveBeenCalledWith(expect.objectContaining({ action: 'widget.revert', clientId: 'tenant-a' }));
+  });
+
+  test('write stores actor from _id and snapshots name and email', async () => {
+    const saveReq = httpMocks.createRequest({
+      body: { name: 'X', key: 'X', description: 'X', type: 'widget', ownership: 'private' },
+    });
+    saveReq.clientId = 'tenant-a';
+    saveReq.user = {
+      _id: '507f1f77bcf86cd799439011',
+      name: 'Ankur Pata',
+      email: 'ankur@sling.biz',
+    };
+    await run(widgetsController.createWidget, saveReq);
+    expect(auditService.write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: '507f1f77bcf86cd799439011',
+        metadata: expect.objectContaining({
+          actorName: 'Ankur Pata',
+          actorEmail: 'ankur@sling.biz',
+        }),
+      })
+    );
   });
 
   test('submit still returns 200 if audit write fails', async () => {

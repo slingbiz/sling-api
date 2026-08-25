@@ -6,13 +6,18 @@ const { widgetsService, widgetGenerateService, themeService, auditService, widge
 
 const writeAudit = async (req, action, resourceType, resourceId, metadata) => {
   try {
+    const actor = auditService.actorFromUser(req.user);
     await auditService.write({
       clientId: req.clientId,
-      actorUserId: req.user && req.user.id,
+      actorUserId: actor.actorUserId,
       action,
       resourceType,
       resourceId,
-      metadata,
+      metadata: {
+        ...(metadata || {}),
+        ...(actor.actorName ? { actorName: actor.actorName } : {}),
+        ...(actor.actorEmail ? { actorEmail: actor.actorEmail } : {}),
+      },
     });
   } catch (error) {
     // A successful widget write must not become a 500 because audit failed.

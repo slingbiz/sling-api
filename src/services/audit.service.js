@@ -13,6 +13,41 @@ const requireClientId = (clientId) => {
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const actorFromUser = (user) => {
+  if (!user) {
+    return { actorUserId: undefined, actorName: undefined, actorEmail: undefined };
+  }
+  const raw = user._id != null && user._id !== '' ? user._id : user.id;
+  return {
+    actorUserId: raw != null && raw !== '' ? String(raw) : undefined,
+    actorName: user.name || undefined,
+    actorEmail: user.email || undefined,
+  };
+};
+
+const asActorId = (value) => {
+  if (value == null || value === '') return null;
+  if (typeof value === 'object') {
+    if (typeof value.toHexString === 'function') {
+      const hex = value.toHexString();
+      return OBJECT_ID.test(hex) ? hex : null;
+    }
+    if (value._id) return asActorId(value._id);
+    if (value.id) return asActorId(value.id);
+  }
+  const str = String(value);
+  return OBJECT_ID.test(str) ? str : null;
+};
+
+const applyActorSnapshot = (event, user) => {
+  const meta = (event && event.metadata) || {};
+  return {
+    ...event,
+    actorName: event.actorName || (user && user.name) || meta.actorName,
+    actorEmail: event.actorEmail || (user && user.email) || meta.actorEmail,
+  };
+};
+
 const write = async ({ clientId, actorUserId, action, resourceType, resourceId, metadata } = {}) => {
   requireClientId(clientId);
   if (!action || !resourceType) {
@@ -29,32 +64,22 @@ const write = async ({ clientId, actorUserId, action, resourceType, resourceId, 
 };
 
 const enrichActors = async (events) => {
-  const ids = [
-    ...new Set(
-      (events || [])
-        .map((event) => event.actorUserId)
-        .filter((id) => id && OBJECT_ID.test(String(id)))
-        .map((id) => String(id))
-    ),
-  ];
-  if (!ids.length) {
-    return events;
+  const rows = events || [];
+  const ids = [...new Set(rows.map((event) => asActorId(event.actorUserId)).filter(Boolean))];
+  let byId = new Map();
+  if (ids.length) {
+    try {
+      const users = await User.find({ _id: { $in: ids } }).select('name email').lean();
+      byId = new Map();
+      (users || []).forEach((user) => {
+        if (user._id) byId.set(String(user._id), user);
+        if (user.id) byId.set(String(user.id), user);
+      });
+    } catch (error) {
+      byId = new Map();
+    }
   }
-  try {
-    const users = await User.find({ _id: { $in: ids } }).select('name email').lean();
-    const byId = new Map((users || []).map((user) => [String(user._id), user]));
-    return events.map((event) => {
-      const user = byId.get(String(event.actorUserId));
-      if (!user) return event;
-      return {
-        ...event,
-        actorName: user.name,
-        actorEmail: user.email,
-      };
-    });
-  } catch (error) {
-    return events;
-  }
+  return rows.map((event) => applyActorSnapshot(event, byId.get(asActorId(event.actorUserId) || String(event.actorUserId || ''))));
 };
 
 const list = async ({ clientId, page = 0, size = 50, action, resourceType, resourceId, q } = {}) => {
@@ -93,6 +118,7 @@ const list = async ({ clientId, page = 0, size = 50, action, resourceType, resou
 };
 
 module.exports = {
+  actorFromUser,
   write,
   list,
 };

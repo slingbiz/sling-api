@@ -7,6 +7,15 @@ jest.mock('../../../src/services/theme.service', () => ({
 
 jest.mock('../../../src/services/audit.service', () => ({
   write: jest.fn().mockResolvedValue({ _id: 'a1' }),
+  actorFromUser: (user) => {
+    if (!user) return { actorUserId: undefined, actorName: undefined, actorEmail: undefined };
+    const raw = user._id != null && user._id !== '' ? user._id : user.id;
+    return {
+      actorUserId: raw != null && raw !== '' ? String(raw) : undefined,
+      actorName: user.name || undefined,
+      actorEmail: user.email || undefined,
+    };
+  },
 }));
 
 const themeController = require('../../../src/controllers/theme.controller');
@@ -18,7 +27,7 @@ describe('theme controller audit', () => {
   test('theme update writes theme.update for this clientId only', async () => {
     const req = httpMocks.createRequest({ body: { theme: { palette: { primary: { main: '#111111' } } } } });
     req.clientId = 'tenant-a';
-    req.user = { id: 'user-a' };
+    req.user = { _id: '507f1f77bcf86cd799439011', name: 'Ankur Pata', email: 'ankur@sling.biz' };
     const payloads = [];
     const res = httpMocks.createResponse();
     res.status = (code) => {
@@ -39,9 +48,13 @@ describe('theme controller audit', () => {
     expect(auditService.write).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: 'tenant-a',
-        actorUserId: 'user-a',
+        actorUserId: '507f1f77bcf86cd799439011',
         action: 'theme.update',
         resourceType: 'theme',
+        metadata: expect.objectContaining({
+          actorName: 'Ankur Pata',
+          actorEmail: 'ankur@sling.biz',
+        }),
       })
     );
   });

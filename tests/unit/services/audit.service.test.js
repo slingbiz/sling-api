@@ -166,4 +166,54 @@ describe('audit.service', () => {
     expect(listed.events[0].actorName).toBe('Ada Lovelace');
     expect(listed.events[0].actorEmail).toBe('ada@sling.biz');
   });
+
+  test('actorFromUser prefers _id and snapshots name and email', () => {
+    expect(
+      auditService.actorFromUser({
+        _id: '507f1f77bcf86cd799439011',
+        name: 'Ankur Pata',
+        email: 'ankur@sling.biz',
+      })
+    ).toEqual({
+      actorUserId: '507f1f77bcf86cd799439011',
+      actorName: 'Ankur Pata',
+      actorEmail: 'ankur@sling.biz',
+    });
+    expect(auditService.actorFromUser({ id: '507f1f77bcf86cd799439012', name: 'Ada' }).actorUserId).toBe(
+      '507f1f77bcf86cd799439012'
+    );
+    expect(auditService.actorFromUser({ _id: '507f1f77bcf86cd799439011', id: 'ignored' }).actorUserId).toBe(
+      '507f1f77bcf86cd799439011'
+    );
+  });
+
+  test('list shows snapshotted actor when user join cannot run', async () => {
+    await auditService.write({
+      clientId: 'tenant-a',
+      actorUserId: 'not-an-objectid',
+      action: 'widget.save',
+      resourceType: 'widget',
+      resourceId: 'w1',
+      metadata: { actorName: 'Ankur Pata', actorEmail: 'ankur@sling.biz', key: 'LoginForm' },
+    });
+
+    const listed = await auditService.list({ clientId: 'tenant-a' });
+    expect(listed.events[0].actorName).toBe('Ankur Pata');
+    expect(listed.events[0].actorEmail).toBe('ankur@sling.biz');
+  });
+
+  test('joins actor using user _id when actorUserId is nested', async () => {
+    const actorId = '507f1f77bcf86cd799439011';
+    users.push({ _id: actorId, name: 'Ada Lovelace', email: 'ada@sling.biz', workspaceKey: 'tenant-a' });
+    await auditService.write({
+      clientId: 'tenant-a',
+      actorUserId: { _id: actorId },
+      action: 'widget.save',
+      resourceType: 'widget',
+      resourceId: 'w1',
+    });
+
+    const listed = await auditService.list({ clientId: 'tenant-a' });
+    expect(listed.events[0].actorName).toBe('Ada Lovelace');
+  });
 });

@@ -10,12 +10,17 @@ const getTheme = catchAsync(async (req, res) => {
 
 const setTheme = catchAsync(async (req, res) => {
   const theme = await themeService.saveTheme(req.clientId, req.body);
+  const actor = auditService.actorFromUser(req.user);
   await auditService.write({
     clientId: req.clientId,
-    actorUserId: req.user && req.user.id,
+    actorUserId: actor.actorUserId,
     action: 'theme.update',
     resourceType: 'theme',
     resourceId: req.clientId,
+    metadata: {
+      ...(actor.actorName ? { actorName: actor.actorName } : {}),
+      ...(actor.actorEmail ? { actorEmail: actor.actorEmail } : {}),
+    },
   });
   res.status(httpStatus.OK).send(theme);
 });
