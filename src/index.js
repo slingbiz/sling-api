@@ -18,8 +18,9 @@ const startServer = async () => {
   });
 };
 
-// Local dev: start a traditional HTTP server
-if (process.env.NODE_ENV !== 'production') {
+// Vercel sets VERCEL=1 and uses the exported handler. A real server (local or
+// the generate box) must listen — production on Hobby Vercel times out Gemini.
+if (!process.env.VERCEL) {
   startServer();
 }
 

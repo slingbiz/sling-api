@@ -85,7 +85,10 @@ const devRoutes = [
   },
 ];
 
-defaultRoutes.forEach((route) => {
+const generateOnly = String(process.env.GENERATE_ONLY || '') === 'true';
+const routesToMount = generateOnly ? defaultRoutes.filter((route) => route.path === '/ai') : defaultRoutes;
+
+routesToMount.forEach((route) => {
   router.use(route.path, route.route);
 });
 

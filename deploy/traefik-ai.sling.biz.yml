@@ -1,0 +1,24 @@
+http:
+  serversTransports:
+    sling-ai-long:
+      forwardingTimeouts:
+        dialTimeout: 30s
+        responseHeaderTimeout: 0s
+        idleConnTimeout: 180s
+  routers:
+    sling-api-ai:
+      rule: "Host(`ai.sling.biz`)"
+      entryPoints:
+        - websecure
+      service: sling-api-ai
+      tls:
+        certResolver: myresolver
+        domains:
+          - main: ai.sling.biz
+  services:
+    sling-api-ai:
+      loadBalancer:
+        servers:
+          - url: "http://172.17.0.1:10001"
+        passHostHeader: true
+        serversTransport: sling-ai-long
