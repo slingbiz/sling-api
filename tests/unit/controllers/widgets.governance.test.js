@@ -29,6 +29,9 @@ jest.mock('../../../src/services', () => ({
     getTheme: jest.fn().mockResolvedValue({ theme: { palette: {} } }),
     saveTheme: jest.fn().mockResolvedValue({ theme: { palette: {} } }),
   },
+  generateQuotaService: {
+    consumeGenerateQuota: jest.fn().mockResolvedValue({ remaining: 19, limit: 20 }),
+  },
   auditService: {
     write: jest.fn().mockResolvedValue({ _id: 'a1' }),
     list: jest.fn().mockResolvedValue({ events: [], tc: 0 }),

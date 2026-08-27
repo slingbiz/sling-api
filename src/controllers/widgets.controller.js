@@ -2,7 +2,7 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { WidgetStatus } = require('../constants/appEnums');
 
-const { widgetsService, widgetGenerateService, themeService, auditService, widgetVersionService } = require('../services');
+const { widgetsService, widgetGenerateService, themeService, auditService, widgetVersionService, generateQuotaService } = require('../services');
 
 const writeAudit = async (req, action, resourceType, resourceId, metadata) => {
   try {
@@ -105,6 +105,7 @@ const publishWidget = catchAsync(async (req, res) => {
 
 const generateWidget = catchAsync(async (req, res) => {
   const { prompt, themeConfig } = req.body;
+  await generateQuotaService.consumeGenerateQuota(req.clientId);
   const resolvedTheme = themeConfig || (await themeService.getTheme(req.clientId)).theme;
   const generated = await widgetGenerateService.generateWidget(prompt, resolvedTheme);
 

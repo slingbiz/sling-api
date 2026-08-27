@@ -10,6 +10,7 @@ const pageRoutes = require('./pageRoutes.route');
 const frontendRoute = require('./frontend.route');
 const themeRoute = require('./theme.route');
 const auditRoute = require('./audit.route');
+const aiRoute = require('./ai.route');
 const docsRoute = require('./docs.route');
 const inviteRoute = require('./invite.route');
 const memberRoute = require('./member.route');
@@ -69,6 +70,10 @@ const defaultRoutes = [
   {
     path: '/audit',
     route: auditRoute,
+  },
+  {
+    path: '/ai',
+    route: aiRoute,
   },
 ];
 

@@ -6,3 +6,4 @@ module.exports.ThemeConfig = require('./themeConfig.model');
 module.exports.AuditLog = require('./auditLog.model');
 module.exports.MemberInvite = require('./memberInvite.model');
 module.exports.WidgetVersion = require('./widgetVersion.model');
+module.exports.GenerateUsage = require('./generateUsage.model');
