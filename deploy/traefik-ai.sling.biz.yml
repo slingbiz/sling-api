@@ -12,7 +12,7 @@ http:
         - websecure
       service: sling-api-ai
       tls:
-        certResolver: myresolver
+        certResolver: lehttp
         domains:
           - main: ai.sling.biz
   services:
