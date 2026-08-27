@@ -4,6 +4,7 @@ const {
   slugifyEmailLocalPart,
   getTenantSlugCandidate,
   formatTenantSlugWithAttempt,
+  resolvePersistedClientUrl,
   shouldReplaceWithPreviewClientUrl,
 } = require('./tenantSlug');
 
@@ -86,6 +87,29 @@ describe('tenantSlug', () => {
     it('keeps real hosts', () => {
       expect(shouldReplaceWithPreviewClientUrl('https://shop.example.com')).toBe(false);
       expect(shouldReplaceWithPreviewClientUrl('https://preview.acme.sling.biz')).toBe(false);
+    });
+  });
+
+  describe('resolvePersistedClientUrl', () => {
+    const slug = 'ankur-ankur-com';
+
+    it('keeps localhost on local self-host', () => {
+      const prev = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      expect(resolvePersistedClientUrl('http://localhost:4087', slug)).toBe(
+        'http://localhost:4087',
+      );
+      expect(resolvePersistedClientUrl('', slug)).toBe('http://localhost:4087');
+      process.env.NODE_ENV = prev;
+    });
+
+    it('rewrites localhost to the preview host when not local', () => {
+      const prev = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      expect(resolvePersistedClientUrl('http://localhost:4087', slug)).toBe(
+        `https://${slug}.preview.sling.biz`,
+      );
+      process.env.NODE_ENV = prev;
     });
   });
 });

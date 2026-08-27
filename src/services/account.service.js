@@ -9,10 +9,9 @@ const { getDb } = require('../utils/mongoInit');
 const {
   getTenantSlugCandidate,
   formatTenantSlugWithAttempt,
-  shouldReplaceWithPreviewClientUrl,
+  resolvePersistedClientUrl,
 } = require('../utils/tenantSlug');
 
-const PREVIEW_FRONTEND_BASE_DOMAIN = process.env.PREVIEW_FRONTEND_BASE_DOMAIN || 'sling.biz';
 const UNIQUE_TENANT_SLUG_MAX_ATTEMPTS = 200;
 
 async function allocateUniqueTenantSlug(AccountModel, ownerUserRef, candidateBase) {
@@ -30,11 +29,6 @@ async function allocateUniqueTenantSlug(AccountModel, ownerUserRef, candidateBas
     httpStatus.CONFLICT,
     'Could not allocate a unique preview subdomain slug; retry or contact support.',
   );
-}
-
-function previewClientUrlForSlug(tenantSlug) {
-  // Matches DNS wildcard *.preview.<PREVIEW_FRONTEND_BASE_DOMAIN> (e.g. acme.preview.sling.biz)
-  return `https://${tenantSlug}.preview.${PREVIEW_FRONTEND_BASE_DOMAIN}`;
 }
 
 const CompanyRegistration = async (formData, user) => {
@@ -77,10 +71,7 @@ const CompanyKeyCodeSetup = async (user, formData) => {
       ? existing.tenantSlug
       : await allocateUniqueTenantSlug(Account, user, baseSlug);
 
-    let { clientUrl } = formData;
-    if (shouldReplaceWithPreviewClientUrl(clientUrl)) {
-      clientUrl = previewClientUrlForSlug(tenantSlug);
-    }
+    const clientUrl = resolvePersistedClientUrl(formData.clientUrl, tenantSlug);
 
     const company = await Account.findOneAndUpdate(
       query,

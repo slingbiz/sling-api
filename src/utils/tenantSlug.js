@@ -114,6 +114,8 @@ function formatTenantSlugWithAttempt(baseSlug, attemptIndex) {
 
 /**
  * True when we should replace the user-submitted clientUrl with the generated preview URL.
+ * Hosted SaaS: empty or localhost (the signup default) becomes *.preview.sling.biz.
+ * Self-host / local dev: keep localhost — that is the storefront.
  * @param {string} [clientUrl]
  */
 function shouldReplaceWithPreviewClientUrl(clientUrl) {
@@ -128,6 +130,29 @@ function shouldReplaceWithPreviewClientUrl(clientUrl) {
   return false;
 }
 
+/**
+ * Pick the storefront URL to persist.
+ * Local self-host keeps localhost:4087. Hosted signup rewrites that default to the preview host.
+ */
+function resolvePersistedClientUrl(clientUrl, tenantSlug) {
+  if (process.env.NODE_ENV === 'development') {
+    if (shouldReplaceWithPreviewClientUrl(clientUrl)) {
+      return String(clientUrl || '').trim() || 'http://localhost:4087';
+    }
+    return String(clientUrl).trim();
+  }
+
+  if (shouldReplaceWithPreviewClientUrl(clientUrl)) {
+    return previewClientUrlForSlug(tenantSlug);
+  }
+
+  return String(clientUrl || '').trim();
+}
+
+function previewClientUrlForSlug(tenantSlug) {
+  return `https://${tenantSlug}.preview.${process.env.PREVIEW_FRONTEND_BASE_DOMAIN || 'sling.biz'}`;
+}
+
 module.exports = {
   RESERVED_TENANT_SLUGS,
   MAX_LABEL_LENGTH,
@@ -137,4 +162,6 @@ module.exports = {
   getTenantSlugCandidate,
   formatTenantSlugWithAttempt,
   shouldReplaceWithPreviewClientUrl,
+  resolvePersistedClientUrl,
+  previewClientUrlForSlug,
 };
