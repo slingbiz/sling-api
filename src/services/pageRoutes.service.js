@@ -48,7 +48,15 @@ const getRoutes = async ({ page = 0, size = 10, query, clientId, type }) => {
     .limit(size)
     .toArray();
   const totalRes = await db.collection('page_routes').count({ $and: andArray });
-  return { pageRoutes: pageRoutesRes, tc: totalRes };
+  const pageRoutes = pageRoutesRes.map((route) => {
+    if (route.createdAt) {
+      return route;
+    }
+    const createdAt =
+      route._id && typeof route._id.getTimestamp === 'function' ? route._id.getTimestamp() : undefined;
+    return createdAt ? { ...route, createdAt } : route;
+  });
+  return { pageRoutes, tc: totalRes };
 };
 
 const saveRoute = async ({ req, clientId }) => {
@@ -71,7 +79,7 @@ const saveRoute = async ({ req, clientId }) => {
         .collection('page_routes')
         .updateOne({ client_id: clientId, _id: new ObjectId(_id) }, { $set: { ...updObj } }, { upsert: true });
     } else {
-      await db.collection('page_routes').insertOne({ ...updObj });
+      await db.collection('page_routes').insertOne({ ...updObj, createdAt: new Date() });
     }
 
     saveRes = { status: true, msg: 'Route updated successfully' };
