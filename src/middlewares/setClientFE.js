@@ -2,6 +2,11 @@ const { getDb } = require('../utils/mongoInit');
 const logger = require('../config/logger');
 const Account = require('../models/account.model');
 const { canonicalHostname, extractTenantSlugFromPreviewHostname } = require('../utils/previewHostname');
+const {
+  hasUsableStorefrontAuth,
+  isAutoTenantEnabled,
+  resolveAutoTenant,
+} = require('../utils/storefrontAutoTenant');
 
 function pickInboundHost(req) {
   const raw =
@@ -78,13 +83,36 @@ const setClientFE = async (req, res, next) => {
     logger.info(`[setClientFE] Request method: ${req.method}`);
     logger.info(`[setClientFE] Inbound storefront host hint: "${inboundHost || 'n/a'}"`);
 
-    if (!clientId || !license) {
-      logger.warn(`[setClientFE] Missing client ID or license - clientId: "${clientId}", license: "${license ? 'PROVIDED' : 'NOT PROVIDED'}"`);
-      return res.status(400).json({
-        error: {
-          message: 'Unauthenticated Access. Please contact admin.',
-        },
-      });
+    if (!hasUsableStorefrontAuth(license, clientId)) {
+      if (!isAutoTenantEnabled()) {
+        logger.warn(`[setClientFE] Missing client ID or license - clientId: "${clientId}", license: "${license ? 'PROVIDED' : 'NOT PROVIDED'}"`);
+        return res.status(400).json({
+          error: {
+            message: 'Unauthenticated Access. Please contact admin.',
+          },
+        });
+      }
+
+      const db = getDb();
+      const companies = await db
+        .collection('client_meta')
+        .find({})
+        .project({ email: 1, user: 1, apiKey: 1 })
+        .toArray();
+      const resolved = resolveAutoTenant(companies);
+      if (!resolved.ok) {
+        logger.warn(`[setClientFE] Auto-tenant: ${resolved.message}`);
+        return res.status(resolved.status).json({
+          error: {
+            message: resolved.message,
+          },
+        });
+      }
+
+      req.clientId = resolved.clientId;
+      logger.info(`[setClientFE] Auto-tenant (one company) -> "${req.clientId}"`);
+      next();
+      return;
     }
 
     const db = getDb();
