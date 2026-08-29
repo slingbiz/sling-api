@@ -53,8 +53,7 @@ app.options('*', cors());
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
 
-// limit repeated requests to all endpoints in production
-
+// Production only (skipped in development). See RATE_LIMIT_MAX.
 app.use(rateLimiter);
 
 // middlewares
