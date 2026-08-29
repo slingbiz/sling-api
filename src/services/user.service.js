@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
 const { User } = require('../models');
 const ApiError = require('../utils/ApiError');
+const { userBodyContainsLink } = require('../utils/userFieldContainsLink');
 
 /**
  * Create a user
@@ -8,17 +9,7 @@ const ApiError = require('../utils/ApiError');
  * @returns {Promise<User>}
  */
 const createUser = async (userBody) => {
-  // Check for links in any field of userBody
-  const containsLink = Object.entries(userBody).some(([key, value]) => {
-    if (typeof value === 'string' && key !== 'password' && key !== 'email') {
-      // Regular expression to detect various URL formats
-      const urlRegex = /(http:\/\/|https:\/\/|www\.)[^\s]+|[^\s]+\.(com|net|org|edu|gov|mil|io|co|uk|de|ru|info|biz|online|xyz)[^\s]*/gi;
-      return urlRegex.test(value);
-    }
-    return false;
-  });
-
-  if (containsLink) {
+  if (userBodyContainsLink(userBody)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Links are not allowed in user fields');
   }
 
