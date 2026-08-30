@@ -6,6 +6,7 @@ const Account = require('../models/account.model');
 const ApiError = require('../utils/ApiError');
 const { CLIENT_VERIFICATION_STEPS } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
+const { ensureFirstRunHome } = require('../utils/ensureFirstRunHome');
 const {
   getTenantSlugCandidate,
   formatTenantSlugWithAttempt,
@@ -141,6 +142,29 @@ const importPublicData = async (db) => {
   }
 };
 
+const clonePublicIfEmpty = async (db, collectionName, clientId, addedOn) => {
+  const existing = await db.collection(collectionName).countDocuments({
+    client_id: clientId,
+    ownership: 'private',
+  });
+  if (existing > 0) {
+    return;
+  }
+  const publicDocs = await db.collection(collectionName).find({ ownership: 'public' }).project({ _id: 0 }).toArray();
+  if (!publicDocs.length) {
+    return;
+  }
+  await db.collection(collectionName).insertMany(
+    publicDocs.map((element) => ({
+      ...element,
+      client_id: clientId,
+      ownership: 'private',
+      added_on: addedOn,
+      updated_on: addedOn,
+    })),
+  );
+};
+
 const CompanyInitialSetup = async (clientId) => {
   const db = getDb();
   try {
@@ -154,67 +178,32 @@ const CompanyInitialSetup = async (clientId) => {
       await importPublicData(db);
     }
 
-    const widgetPublic = await db.collection('widgets').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
     const addedOn = new Date();
-    const updatedOn = new Date();
     try {
-      await db.collection('widgets').insertMany(
-        widgetPublic.map((element) => ({
-          ...element,
-          client_id: clientId,
-          ownership: 'private',
-          added_on: addedOn,
-          updated_on: updatedOn,
-        }))
-      );
+      await clonePublicIfEmpty(db, 'widgets', clientId, addedOn);
     } catch (e) {
       console.log('Error in CompanyInitialSetup [widgets setup - account.service]: ', e.message);
     }
 
     try {
-      const layoutPublic = await db.collection('layout_config').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
-      await db.collection('layout_config').insertMany(
-        layoutPublic.map((element) => ({
-          ...element,
-          ownership: 'private',
-          client_id: clientId,
-          added_on: addedOn,
-          updated_on: updatedOn,
-        }))
-      );
+      await clonePublicIfEmpty(db, 'layout_config', clientId, addedOn);
     } catch (e) {
       console.log('Error in CompanyInitialSetup [layout setup - account.service]: ', e.message);
     }
 
-    const routePublic = await db.collection('page_routes').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
     try {
-      await db.collection('page_routes').insertMany(
-        routePublic.map((element) => ({
-          ...element,
-          client_id: clientId,
-          ownership: 'private',
-          added_on: addedOn,
-          updated_on: updatedOn,
-        }))
-      );
+      await clonePublicIfEmpty(db, 'page_routes', clientId, addedOn);
     } catch (e) {
       console.log('Error in CompanyInitialSetup [routes setup - account.service]: ', e.message);
     }
 
-    const apiPublic = await db.collection('api_meta').find({ ownership: 'public' }).project({ _id: 0 }).toArray();
     try {
-      await db.collection('api_meta').insertMany(
-        apiPublic.map((element) => ({
-          ...element,
-          client_id: clientId,
-          ownership: 'private',
-          added_on: addedOn,
-          updated_on: updatedOn,
-        }))
-      );
+      await clonePublicIfEmpty(db, 'api_meta', clientId, addedOn);
     } catch (e) {
       console.log('Error in CompanyInitialSetup [api setup - account.service]: ', e.message);
     }
+
+    await ensureFirstRunHome(db, clientId);
 
     // New workspaces start with an empty gallery. Do not clone public media or media_constants.
   } catch (e) {
