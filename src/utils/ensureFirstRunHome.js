@@ -14,9 +14,39 @@ const defaultHomeTemplate = () => ({
   },
 });
 
-const homeBodyRowCount = (home) => (home && home.root && home.root.body && home.root.body.rows
-  ? home.root.body.rows.length
-  : 0);
+const homeBodyRowCount = (home) =>
+  home && home.root && home.root.body && home.root.body.rows ? home.root.body.rows.length : 0;
+
+const listLayouts = async (db, query) => {
+  const cursor = db.collection('layout_config').find(query);
+  if (cursor && typeof cursor.toArray === 'function') {
+    return cursor.toArray();
+  }
+  const one = await db.collection('layout_config').findOne(query);
+  return one ? [one] : [];
+};
+
+const fillEmptyHome = async (db, layout, now) => {
+  const home = layout.config && layout.config.home;
+  if (!home) {
+    await db.collection('layout_config').updateOne(
+      { _id: layout._id },
+      { $set: { 'config.home': defaultHomeTemplate(), updated_on: now } },
+    );
+    return;
+  }
+  if (homeBodyRowCount(home) === 0) {
+    await db.collection('layout_config').updateOne(
+      { _id: layout._id },
+      {
+        $set: {
+          'config.home.root.body': defaultHomeTemplate().root.body,
+          updated_on: now,
+        },
+      },
+    );
+  }
+};
 
 const ensureFirstRunHome = async (db, clientId) => {
   const now = new Date();
@@ -42,11 +72,11 @@ const ensureFirstRunHome = async (db, clientId) => {
     });
   }
 
-  let layout = await db.collection('layout_config').findOne({
+  let privates = await listLayouts(db, {
     client_id: clientId,
     ownership: 'private',
   });
-  if (!layout) {
+  if (!privates.length) {
     const publicLayout = await db
       .collection('layout_config')
       .find({ ownership: 'public' })
@@ -60,14 +90,14 @@ const ensureFirstRunHome = async (db, clientId) => {
         added_on: now,
         updated_on: now,
       });
-      layout = await db.collection('layout_config').findOne({
+      privates = await listLayouts(db, {
         client_id: clientId,
         ownership: 'private',
       });
     }
   }
 
-  if (!layout) {
+  if (!privates.length) {
     await db.collection('layout_config').insertOne({
       client_id: clientId,
       ownership: 'private',
@@ -75,31 +105,24 @@ const ensureFirstRunHome = async (db, clientId) => {
       added_on: now,
       updated_on: now,
     });
-    return;
+    privates = await listLayouts(db, {
+      client_id: clientId,
+      ownership: 'private',
+    });
   }
 
-  const home = layout.config && layout.config.home;
-  if (!home) {
-    await db.collection('layout_config').updateOne(
-      { _id: layout._id },
-      { $set: { 'config.home': defaultHomeTemplate(), updated_on: now } },
-    );
-    return;
+  for (const layout of privates) {
+    await fillEmptyHome(db, layout, now);
   }
 
-  if (homeBodyRowCount(home) === 0) {
-    await db.collection('layout_config').updateOne(
-      { _id: layout._id },
-      {
-        $set: {
-          'config.home.root.body': defaultHomeTemplate().root.body,
-          updated_on: now,
-        },
-      },
-    );
+  const publics = await listLayouts(db, { ownership: 'public' });
+  for (const layout of publics) {
+    await fillEmptyHome(db, layout, now);
   }
 };
 
 module.exports = {
   ensureFirstRunHome,
+  homeBodyRowCount,
+  defaultHomeTemplate,
 };

@@ -19,6 +19,7 @@ const { rateLimiter } = require('./middlewares/rateLimiter');
 const routes = require('./routes/v1');
 const { errorConverter, errorHandler } = require('./middlewares/error');
 const ApiError = require('./utils/ApiError');
+const { sendApiRoot } = require('./utils/apiRootPage');
 
 const app = express();
 // The error handler must be registered before any other error middleware and after all controllers
@@ -61,6 +62,8 @@ app.use(rateLimiter);
 
 // v1 api routes
 app.use('/v1', routes);
+
+app.get('/', sendApiRoot);
 
 // send back a 404 error for any unknown api request
 app.use((req, res, next) => {

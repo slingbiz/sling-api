@@ -34,7 +34,9 @@ const makeDb = (seed = {}) => {
     find: (query) => ({
       project: () => ({
         next: async () => store[name].find((doc) => matches(doc, query)) || null,
+        toArray: async () => store[name].filter((doc) => matches(doc, query)),
       }),
+      toArray: async () => store[name].filter((doc) => matches(doc, query)),
     }),
   });
 
@@ -90,5 +92,36 @@ describe('ensureFirstRunHome', () => {
     });
     await ensureFirstRunHome(db, 'new@company.com');
     expect(db.store.page_routes.filter((row) => row.url_string === '/')).toHaveLength(1);
+  });
+
+  test('fills every empty home layout for the company', async () => {
+    const emptyHome = {
+      meta: { title: 'Home Page Basic' },
+      root: { header: { rows: [] } },
+    };
+    const db = makeDb({
+      page_routes: [{ url_string: '/', page_template: 'home', client_id: 'new@company.com' }],
+      layout_config: [
+        {
+          _id: 'lay-1',
+          client_id: 'new@company.com',
+          ownership: 'private',
+          config: { home: emptyHome },
+        },
+        {
+          _id: 'lay-2',
+          client_id: 'new@company.com',
+          ownership: 'private',
+          config: { home: JSON.parse(JSON.stringify(emptyHome)) },
+        },
+      ],
+    });
+    await ensureFirstRunHome(db, 'new@company.com');
+    expect(db.store.layout_config[0].config.home.root.body.rows[0].cells[0].key).toBe(
+      'DefaultSlingHomePage',
+    );
+    expect(db.store.layout_config[1].config.home.root.body.rows[0].cells[0].key).toBe(
+      'DefaultSlingHomePage',
+    );
   });
 });
