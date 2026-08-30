@@ -14,6 +14,7 @@ const { tokenService } = require('../services');
 const CompanyRegistrationForm = catchAsync(async (req, res) => {
   const apiKey = tokenService.generateApiToken(req.clientId);
   const form = await CompanyRegistration({ ...req.body, apiKey }, req.clientId);
+  await CompanyInitialSetup(req.clientId);
   res.status(httpStatus.CREATED).send(form);
 });
 const CompanyMembershipForm = catchAsync(async (req, res) => {

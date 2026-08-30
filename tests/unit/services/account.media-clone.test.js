@@ -10,5 +10,6 @@ describe('CompanyInitialSetup gallery', () => {
     expect(setup).not.toMatch(/collection\('media'\)/);
     expect(setup).not.toMatch(/insertMany\([\s\S]*mediaPublic/);
     expect(setup).toMatch(/empty gallery/);
+    expect(setup).toMatch(/ensureFirstRunHome/);
   });
 });
