@@ -7,6 +7,7 @@ const ApiError = require('../utils/ApiError');
 const { CLIENT_VERIFICATION_STEPS } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
 const { ensureFirstRunHome } = require('../utils/ensureFirstRunHome');
+const { filterDemoCatalogDocs } = require('../utils/skipDemoCatalog');
 const {
   getTenantSlugCandidate,
   formatTenantSlugWithAttempt,
@@ -133,7 +134,11 @@ const importPublicData = async (db) => {
         if (match) {
           const collectionName = match[1];
           const data = JSON.parse(match[2]);
-          await db.collection(collectionName).insertOne(data);
+          const keep = filterDemoCatalogDocs(collectionName, [data]);
+          if (!keep.length) {
+            continue;
+          }
+          await db.collection(collectionName).insertOne(keep[0]);
         }
       } catch (e) {
         console.log('Error executing query: ', query, e.message);
@@ -151,11 +156,12 @@ const clonePublicIfEmpty = async (db, collectionName, clientId, addedOn) => {
     return;
   }
   const publicDocs = await db.collection(collectionName).find({ ownership: 'public' }).project({ _id: 0 }).toArray();
-  if (!publicDocs.length) {
+  const keep = filterDemoCatalogDocs(collectionName, publicDocs);
+  if (!keep.length) {
     return;
   }
   await db.collection(collectionName).insertMany(
-    publicDocs.map((element) => ({
+    keep.map((element) => ({
       ...element,
       client_id: clientId,
       ownership: 'private',
