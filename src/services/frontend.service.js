@@ -6,6 +6,7 @@ const { GLOBAL_SLING_HANDLER } = require('../constants/common');
 const { getDb } = require('../utils/mongoInit');
 const logger = require('../config/logger');
 const { generateMockProducts } = require('./mockProducts.service');
+const { ensureFirstRunHome } = require('../utils/ensureFirstRunHome');
 
 /**
  * Returns initial config to create the page layout.
@@ -22,6 +23,7 @@ const getLayout = async ({ clientId }) => {
   // TODO: Use pageTemplate to get exactly relevant page node;
 
   try {
+    await ensureFirstRunHome(db, clientId);
     layoutConfig = await db.collection('layout_config').find({ client_id: clientId }).toArray();
   } catch (e) {
     console.log(e.message, '[getLayout] Service');
