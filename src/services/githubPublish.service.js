@@ -61,6 +61,11 @@ function codeReferencesIdentifier(code, identifier) {
   return code.split(/[^A-Za-z0-9_$]+/).includes(identifier);
 }
 
+function hasMakeStylesImport(source) {
+  return /import\s*\{[^}]*\bmakeStyles\b[^}]*\}\s*from\s*['"][^'"]+['"]/.test(source)
+    || /import\s+makeStyles\s+from\s*['"][^'"]+['"]/.test(source);
+}
+
 function buildComponentFile(widget) {
   const code = (widget.code || '').trim();
   const usedHooks = REACT_HOOKS.filter((hook) => codeReferencesIdentifier(code, hook));
@@ -72,7 +77,15 @@ function buildComponentFile(widget) {
     .filter(([, names]) => Array.isArray(names) && names.length > 0)
     .map(([lib, names]) => `import {${names.join(', ')}} from '${lib}';`);
 
-  return [reactImport, ...dependencyImports, '', code, '', 'export default PreviewComponent;', ''].join('\n');
+  const assembled = [reactImport, ...dependencyImports, code].join('\n');
+  const makeStylesImport =
+    codeReferencesIdentifier(code, 'makeStyles') && !hasMakeStylesImport(assembled)
+      ? `import {makeStyles} from '@material-ui/core/styles';`
+      : null;
+
+  return [reactImport, makeStylesImport, ...dependencyImports, '', code, '', 'export default PreviewComponent;', '']
+    .filter((line) => line != null)
+    .join('\n');
 }
 
 function buildWidgetJson(widget) {

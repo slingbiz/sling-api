@@ -171,11 +171,16 @@ const createWidget = async (widgetBody, clientId, actorUserId) => {
 //   return { widgets, tc: widgets.length };
 // };
 
+const MAX_WIDGET_PAGE_SIZE = 1000;
+
+const clampWidgetPageSize = (size) =>
+  Math.min(MAX_WIDGET_PAGE_SIZE, Math.max(1, Number(size) || 50));
+
 const getWidgets = async ({ page = 0, size = 50, query, clientId, type, status }) => {
   requireClientId(clientId);
   const db = getDb();
   const pageNum = Math.max(0, Number(page) || 0);
-  const sizeNum = Math.min(50, Math.max(1, Number(size) || 50));
+  const sizeNum = clampWidgetPageSize(size);
   const skip = pageNum * sizeNum;
   const andArray = [];
 
@@ -416,4 +421,6 @@ module.exports = {
   submitWidgetForReview,
   reviewWidget,
   publishWidget,
+  clampWidgetPageSize,
+  MAX_WIDGET_PAGE_SIZE,
 };
