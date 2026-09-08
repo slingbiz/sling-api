@@ -100,6 +100,9 @@ function detectDependencies(code) {
   const usedIcons = MUI_ICONS.filter(c => new RegExp(`\\b${c}\\b`).test(code));
   if (usedCore.length) deps['@material-ui/core'] = usedCore;
   if (usedIcons.length) deps['@material-ui/icons'] = usedIcons;
+  if (/\bmakeStyles\b/.test(code)) {
+    deps['@material-ui/core/styles'] = ['makeStyles'];
+  }
   return deps;
 }
 
@@ -282,4 +285,4 @@ async function streamWidget(prompt, themeConfig, sendEvent) {
   return widget;
 }
 
-module.exports = { generateWidget, streamWidget, parseResponse, buildThemeInstruction, extractTopLevelJSON };
+module.exports = { generateWidget, streamWidget, parseResponse, buildThemeInstruction, extractTopLevelJSON, detectDependencies };

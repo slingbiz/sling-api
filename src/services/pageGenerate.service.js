@@ -30,7 +30,7 @@ RESPONSE FORMAT — return EXACTLY this structure:
 ---PAGE---
 {"title":"Clinic home","key":"clinic-home","path":"/clinic-home","description":"One line of what this page is"}
 ---SECTION---
-{"id":"hero","label":"Hero banner widget","name":"Hero banner widget","key":"HeroBanner","description":"Headline and CTA","icon":"star","type":"widget","props":[],"dependencies":{"@material-ui/core":["Box","Typography","Button"]}}
+{"id":"hero","label":"Hero banner widget","name":"Hero banner widget","key":"HeroBanner","description":"Headline and CTA","icon":"star","type":"widget","props":[],"dependencies":{"@material-ui/core":["Box","Typography","Button"],"@material-ui/core/styles":["makeStyles"]}}
 ---CODE---
 const useStyles = makeStyles((theme) => ({
   root: { padding: theme.spacing(4) }
@@ -46,7 +46,7 @@ const PreviewComponent = () => {
 };
 ---END---
 ---SECTION---
-{"id":"features","label":"Features widget","name":"Features widget","key":"FeatureGrid","description":"Three feature cards","icon":"widgets","type":"widget","props":[],"dependencies":{"@material-ui/core":["Box","Typography","Grid"]}}
+{"id":"features","label":"Features widget","name":"Features widget","key":"FeatureGrid","description":"Three feature cards","icon":"widgets","type":"widget","props":[],"dependencies":{"@material-ui/core":["Box","Typography","Grid"],"@material-ui/core/styles":["makeStyles"]}}
 ---CODE---
 const useStyles = makeStyles((theme) => ({
   root: {

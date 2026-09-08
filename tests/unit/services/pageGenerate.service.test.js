@@ -44,7 +44,7 @@ describe('parsePageResponse', () => {
     const {SYSTEM_PROMPT} = require('../../../src/services/pageGenerate.service');
     expect(SYSTEM_PROMPT).toMatch(/theme\.breakpoints/);
     expect(SYSTEM_PROMPT).toMatch(/Grid item xs=\{12\}/);
-    expect(SYSTEM_PROMPT).toMatch(/maxWidth: '100%'/);
+    expect(SYSTEM_PROMPT).toMatch(/@material-ui\/core\/styles":\["makeStyles"\]/);
   });
 
   test('rejects a blob with no sections', () => {
